@@ -1,0 +1,36 @@
+appId: com.wowaddonmanager.app
+productName: WoW Addon Manager
+copyright: Copyright © 2024 WoW Addon Manager
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - dist-electron
+  - dist
+  - "!**/.eslintrc.{js,cjs}"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{.env,.env.*}"
+  - "!node_modules"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: WoWAddonManager-${version}-Setup.exe
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: WoW Addon Manager
+  uninstallDisplayName: WoW Addon Manager
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+publish:
+  provider: github
+  releaseType: release
