@@ -1,4 +1,5 @@
 # WoW Addon Manager
+<img width="1024" height="1024" alt="WoWAddonManager" src="https://github.com/user-attachments/assets/7e369412-dfbf-44f9-8a7d-ccfb47f5303a" />
 
 A **Windows 64-bit** desktop application for managing World of Warcraft addons, built with Electron + React + TypeScript.
 
