@@ -12,7 +12,6 @@ files:
   - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
   - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
   - "!**/{.env,.env.*}"
-  - "!node_modules"
 
 win:
   target:
