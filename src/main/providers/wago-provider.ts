@@ -110,8 +110,11 @@ export class WagoProvider extends BaseProvider {
     }
     if (query.trim()) params.query = query.trim()
 
-    const res = await this.client.get<WagoSearchResponse>('/addons', { params })
-    return (res.data.data ?? []).map(a => this.mapAddon(a))
+    const res = await this.client.get<WagoSearchResponse | WagoAddon[]>('/addons', { params })
+    const list: WagoAddon[] = Array.isArray(res.data)
+      ? res.data
+      : ((res.data as WagoSearchResponse).data ?? [])
+    return list.map(a => this.mapAddon(a))
   }
 
   async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel): Promise<UpdateInfo | null> {
@@ -129,7 +132,7 @@ export class WagoProvider extends BaseProvider {
 
       return {
         latestVersion: release.label,
-        downloadUrl: release.download_url ?? '',
+        downloadUrl: release.download_url ?? addon.downloadUrl ?? '',
         releaseDate: release.published_at,
       }
     } catch {
