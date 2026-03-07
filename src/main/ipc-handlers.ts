@@ -168,13 +168,12 @@ export function registerIpcHandlers(win: BrowserWindow) {
     const installation = settings.wowInstallations.find(i => i.id === installationId)
     if (!installation) throw new Error(`Installation not found: ${installationId}`)
 
-    const addons = getInstalledAddons(installationId).filter(
+    const allAddons = getInstalledAddons(installationId)
+    const checkable = allAddons.filter(
       a => !a.isIgnored && a.provider !== 'unknown'
     )
 
-    const results: InstalledAddon[] = []
-
-    for (const addon of addons) {
+    for (const addon of checkable) {
       try {
         const channel = addon.channelPreference ?? settings.defaultChannel
         let info = null
@@ -195,12 +194,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
       } catch (err) {
         console.error(`Update check failed for ${addon.name}:`, err)
       }
-
-      results.push(addon)
     }
 
-    saveInstalledAddons(installationId, results)
-    return results
+    saveInstalledAddons(installationId, allAddons)
+    return allAddons
   })
 
   // ── Uninstall ────────────────────────────────────────────────────────────

@@ -94,8 +94,8 @@ export class CurseForgeProvider extends BaseProvider {
 
   private mapMod(mod: CFMod, channel: ReleaseChannel = 'stable'): AddonSearchResult {
     const allowedTypes = CHANNEL_TYPE[channel]
-    const latestFile = mod.latestFiles
-      ?.filter(f => allowedTypes.includes(f.releaseType))
+    const latestFile = (mod.latestFiles ?? [])
+      .filter(f => allowedTypes.includes(f.releaseType))
       .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0]
 
     return {
