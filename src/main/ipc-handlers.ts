@@ -88,6 +88,7 @@ export function registerIpcHandlers(win: BrowserWindow) {
   ipcMain.handle('addon:search', async (_e, payload: SearchPayload) => {
     const { query, provider, flavor = 'retail', page = 1, pageSize = 20 } = payload
     const results: AddonSearchResult[] = []
+    const errors: string[] = []
 
     const providers = provider
       ? [provider]
@@ -100,8 +101,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
           case 'curseforge':  return await curseforge.search(query, flavor, page, pageSize)
           case 'wowinterface':return await wowinterface.search(query, flavor, page, pageSize)
         }
-      } catch (err) {
+      } catch (err: any) {
+        const msg = err?.message ?? String(err)
         console.error(`Search failed on ${p}:`, err)
+        errors.push(`${p}: ${msg}`)
         return []
       }
       return []
@@ -110,6 +113,13 @@ export function registerIpcHandlers(win: BrowserWindow) {
     const batches = await Promise.allSettled(searches)
     for (const batch of batches) {
       if (batch.status === 'fulfilled' && batch.value) results.push(...batch.value)
+    }
+
+    // If every provider failed with an error and nothing came back, surface the
+    // errors to the renderer so the user sees what went wrong instead of an
+    // unexplained empty state.
+    if (results.length === 0 && errors.length > 0) {
+      throw new Error(errors.join(' | '))
     }
 
     // Sort by downloads desc
@@ -144,7 +154,21 @@ export function registerIpcHandlers(win: BrowserWindow) {
     const addon = addons.find(a => a.id === addonId)
     if (!addon) throw new Error(`Addon not found: ${addonId}`)
 
-    if (!addon.downloadUrl) throw new Error('No download URL; run update check first.')
+    // If no download URL was stored from the last update check, try fetching
+    // it live from the provider now rather than failing immediately.
+    if (!addon.downloadUrl) {
+      const channel = addon.channelPreference ?? settings.defaultChannel
+      let info = null
+      switch (addon.provider) {
+        case 'wago':         info = await wago.checkUpdate(addon, channel);         break
+        case 'curseforge':   info = await curseforge.checkUpdate(addon, channel);   break
+        case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel); break
+        case 'github':       info = await github.checkUpdate(addon, channel);       break
+      }
+      if (info?.downloadUrl) addon.downloadUrl = info.downloadUrl
+    }
+
+    if (!addon.downloadUrl) throw new Error('No download URL; the provider did not return one.')
 
     const result: AddonSearchResult = {
       externalId: addon.sourceId ?? addonId,

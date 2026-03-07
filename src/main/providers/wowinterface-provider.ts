@@ -78,14 +78,14 @@ export class WoWInterfaceProvider extends BaseProvider {
     pageSize = 20
   ): Promise<AddonSearchResult[]> {
     if (!query.trim()) return []
-    try {
-      const res = await this.client.get<WowiFile[]>(`/search/name:${encodeURIComponent(query)}.json`)
-      const all = Array.isArray(res.data) ? res.data : []
-      const start = (page - 1) * pageSize
-      return all.slice(start, start + pageSize).map(f => this.mapFile(f))
-    } catch {
-      return []
-    }
+    const res = await this.client.get(`/search/name:${encodeURIComponent(query)}.json`)
+    // The API returns a plain array; guard against unexpected object wrappers.
+    const raw = res.data
+    const all: WowiFile[] = Array.isArray(raw)
+      ? raw
+      : (raw?.files ?? raw?.results ?? raw?.data ?? [])
+    const start = (page - 1) * pageSize
+    return all.slice(start, start + pageSize).map(f => this.mapFile(f))
   }
 
   async checkUpdate(addon: InstalledAddon, _channel: ReleaseChannel): Promise<UpdateInfo | null> {

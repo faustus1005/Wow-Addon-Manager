@@ -120,8 +120,10 @@ export class WagoProvider extends BaseProvider {
   async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel): Promise<UpdateInfo | null> {
     if (!addon.sourceId) return null
     try {
-      const res = await this.client.get<{ data: WagoAddon }>(`/addons/${addon.sourceId}`)
-      const wa = res.data.data
+      const res = await this.client.get(`/addons/${addon.sourceId}`)
+      // The detail endpoint may return { data: WagoAddon } or a bare WagoAddon.
+      const raw = res.data as any
+      const wa: WagoAddon = raw?.data ?? raw
       const release = wa.recent_release
       if (!release) return null
 
@@ -142,8 +144,10 @@ export class WagoProvider extends BaseProvider {
 
   async getDetails(externalId: string, _flavor: WowFlavor): Promise<Partial<AddonSearchResult>> {
     try {
-      const res = await this.client.get<{ data: WagoAddon }>(`/addons/${externalId}`)
-      return this.mapAddon(res.data.data)
+      const res = await this.client.get(`/addons/${externalId}`)
+      const raw = res.data as any
+      const wa: WagoAddon = raw?.data ?? raw
+      return this.mapAddon(wa)
     } catch {
       return { externalId }
     }
