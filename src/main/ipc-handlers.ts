@@ -144,7 +144,25 @@ export function registerIpcHandlers(win: BrowserWindow) {
     const addon = addons.find(a => a.id === addonId)
     if (!addon) throw new Error(`Addon not found: ${addonId}`)
 
-    if (!addon.downloadUrl) throw new Error('No download URL; run update check first.')
+    if (!addon.downloadUrl) {
+      const channel = addon.channelPreference ?? settings.defaultChannel
+      let info = null
+
+      switch (addon.provider) {
+        case 'wago':         info = await wago.checkUpdate(addon, channel);         break
+        case 'curseforge':   info = await curseforge.checkUpdate(addon, channel);   break
+        case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel); break
+        case 'github':       info = await github.checkUpdate(addon, channel);       break
+      }
+
+      if (!info?.downloadUrl) {
+        throw new Error('No download URL available; provider did not return one.')
+      }
+
+      addon.downloadUrl = info.downloadUrl
+      addon.latestVersion = info.latestVersion
+      saveInstalledAddons(installationId, addons)
+    }
 
     const result: AddonSearchResult = {
       externalId: addon.sourceId ?? addonId,
@@ -188,8 +206,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
         if (info) {
           const hasUpdate = info.latestVersion !== addon.version
           addon.latestVersion = info.latestVersion
-          if (info.downloadUrl) addon.downloadUrl = info.downloadUrl
+          addon.downloadUrl = info.downloadUrl
           addon.updateAvailable = hasUpdate
+        } else {
+          addon.updateAvailable = false
         }
       } catch (err) {
         console.error(`Update check failed for ${addon.name}:`, err)

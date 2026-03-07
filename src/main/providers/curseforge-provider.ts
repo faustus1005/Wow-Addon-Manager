@@ -57,6 +57,10 @@ interface CFFile {
   gameVersions: string[]
 }
 
+interface CFFileDetailsResponse {
+  data?: CFFile
+}
+
 interface CFSearchResponse {
   data: CFMod[]
   pagination?: { totalCount: number; resultCount: number; index: number; pageSize: number }
@@ -91,6 +95,25 @@ export class CurseForgeProvider extends BaseProvider {
   }
 
   hasKey(): boolean { return !!this.apiKey }
+
+  private async resolveDownloadUrl(modId: string, file: CFFile): Promise<string> {
+    if (file.downloadUrl) return file.downloadUrl
+
+    try {
+      const fileRes = await this.client.get<CFFileDetailsResponse>(`/mods/${modId}/files/${file.id}`)
+      const detailUrl = fileRes.data?.data?.downloadUrl
+      if (detailUrl) return detailUrl
+    } catch {
+      // fall through to download-url endpoint
+    }
+
+    try {
+      const urlRes = await this.client.get<{ data: string }>(`/mods/${modId}/files/${file.id}/download-url`)
+      return urlRes.data.data ?? ''
+    } catch {
+      return ''
+    }
+  }
 
   private mapMod(mod: CFMod, channel: ReleaseChannel = 'stable'): AddonSearchResult {
     const allowedTypes = CHANNEL_TYPE[channel]
@@ -150,16 +173,10 @@ export class CurseForgeProvider extends BaseProvider {
 
       if (!latestFile) return null
 
-      // Resolve download URL (may be null for some mods)
-      let downloadUrl = latestFile.downloadUrl ?? ''
-      if (!downloadUrl) {
-        try {
-          const urlRes = await this.client.get<{ data: string }>(
-            `/mods/${addon.sourceId}/files/${latestFile.id}/download-url`
-          )
-          downloadUrl = urlRes.data.data ?? ''
-        } catch { /* ignore */ }
-      }
+      // Resolve download URL (CF may omit it on list endpoints)
+      const downloadUrl = await this.resolveDownloadUrl(addon.sourceId, latestFile)
+
+      if (!downloadUrl) return null
 
       return {
         latestVersion: latestFile.displayName || latestFile.fileName,

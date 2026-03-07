@@ -71,6 +71,25 @@ export class WoWInterfaceProvider extends BaseProvider {
     }
   }
 
+  private async fetchSearchResults(query: string): Promise<WowiFile[]> {
+    const encoded = encodeURIComponent(query)
+    const candidates = [
+      `/search/name:${encoded}.json`,
+      `/search/${encoded}.json`,
+    ]
+
+    for (const endpoint of candidates) {
+      try {
+        const res = await this.client.get<WowiFile[]>(endpoint)
+        if (Array.isArray(res.data)) return res.data
+      } catch {
+        // Try the next known endpoint variant.
+      }
+    }
+
+    return []
+  }
+
   async search(
     query: string,
     _flavor: WowFlavor,
@@ -78,14 +97,9 @@ export class WoWInterfaceProvider extends BaseProvider {
     pageSize = 20
   ): Promise<AddonSearchResult[]> {
     if (!query.trim()) return []
-    try {
-      const res = await this.client.get<WowiFile[]>(`/search/name:${encodeURIComponent(query)}.json`)
-      const all = Array.isArray(res.data) ? res.data : []
-      const start = (page - 1) * pageSize
-      return all.slice(start, start + pageSize).map(f => this.mapFile(f))
-    } catch {
-      return []
-    }
+    const all = await this.fetchSearchResults(query)
+    const start = (page - 1) * pageSize
+    return all.slice(start, start + pageSize).map(f => this.mapFile(f))
   }
 
   async checkUpdate(addon: InstalledAddon, _channel: ReleaseChannel): Promise<UpdateInfo | null> {
