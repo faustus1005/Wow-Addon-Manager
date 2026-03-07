@@ -188,7 +188,7 @@ export function registerIpcHandlers(win: BrowserWindow) {
         if (info) {
           const hasUpdate = info.latestVersion !== addon.version
           addon.latestVersion = info.latestVersion
-          addon.downloadUrl   = info.downloadUrl
+          if (info.downloadUrl) addon.downloadUrl = info.downloadUrl
           addon.updateAvailable = hasUpdate
         }
       } catch (err) {
