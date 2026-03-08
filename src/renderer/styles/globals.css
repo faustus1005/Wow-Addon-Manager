@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  body {
+    @apply bg-wow-dark text-gray-100 font-sans;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-gray-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-500; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+           transition-all duration-150 cursor-pointer select-none disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-wow-gold text-gray-900 hover:bg-wow-gold-dark active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-700 text-gray-100 hover:bg-gray-600 active:scale-95;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-700 text-white hover:bg-red-600 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-300 hover:bg-gray-700 active:scale-95;
+  }
+
+  .btn-success {
+    @apply btn bg-green-700 text-white hover:bg-green-600 active:scale-95;
+  }
+
+  .card {
+    @apply bg-wow-dark-2 rounded-xl border border-gray-800;
+  }
+
+  .input {
+    @apply bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100
+           placeholder-gray-500 focus:outline-none focus:border-wow-gold transition-colors;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-update { @apply badge bg-amber-600 text-amber-100; }
+  .badge-installed { @apply badge bg-green-800 text-green-200; }
+  .badge-ignored { @apply badge bg-gray-700 text-gray-400; }
+  .badge-wago { @apply badge bg-purple-800 text-purple-200; }
+  .badge-curseforge { @apply badge bg-orange-800 text-orange-200; }
+  .badge-wowinterface { @apply badge bg-blue-800 text-blue-200; }
+  .badge-github { @apply badge bg-gray-700 text-gray-300; }
+  .badge-unknown { @apply badge bg-gray-800 text-gray-400; }
+
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2;
+  }
+}
+
+/* Drag region for frameless window */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Smooth page transitions */
+.page-enter { animation: fadeIn 0.15s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
