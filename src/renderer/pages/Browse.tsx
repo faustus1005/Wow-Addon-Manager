@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react'
-import { AddonSearchResult, AddonProvider, WowFlavor } from '../types'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { AddonSearchResult, AddonCategory, AddonProvider, WowFlavor, BrowseSortField } from '../types'
 import { useApp } from '../context/AppContext'
 import SearchResultCard from '../components/SearchResultCard'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -21,6 +21,54 @@ const FLAVOR_LABELS: Record<WowFlavor, string> = {
   wrath:          'Wrath Classic',
 }
 
+const SORT_OPTIONS: { value: BrowseSortField; label: string }[] = [
+  { value: 'popularity', label: 'Popularity' },
+  { value: 'downloads',  label: 'Most Downloads' },
+  { value: 'name',       label: 'Name (A-Z)' },
+  { value: 'updated',    label: 'Recently Updated' },
+]
+
+// Category icons keyed by common WoW addon category names
+const CATEGORY_ICONS: Record<string, string> = {
+  'Action Bars':      '\u2694\uFE0F',
+  'Auction & Economy':'💰',
+  'Bags & Inventory': '🎒',
+  'Boss Encounters':  '💀',
+  'Buffs & Debuffs':  '✨',
+  'Chat & Communication': '💬',
+  'Class':            '🛡️',
+  'Combat':           '⚔️',
+  'Companions':       '🐾',
+  'Data Broker':      '📊',
+  'Data Export':       '📤',
+  'Development Tools': '🔧',
+  'Garrison':         '🏰',
+  'Guild':            '👥',
+  'HUDs':             '🖥️',
+  'Libraries':        '📚',
+  'Mail':             '📧',
+  'Map & Minimap':    '🗺️',
+  'Miscellaneous':    '📦',
+  'Plugins':          '🔌',
+  'Professions':      '⚒️',
+  'PvP':              '⚔️',
+  'Quests & Leveling':'📜',
+  'Raid Frames':      '🏥',
+  'Roleplay':         '🎭',
+  'Tooltip':          '💡',
+  'Transmogrification':'👗',
+  'Unit Frames':      '❤️',
+}
+
+function getCategoryIcon(name: string): string {
+  for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
+    if (name.toLowerCase().includes(key.toLowerCase())) return icon
+  }
+  return '📁'
+}
+
+type BrowseMode = 'home' | 'search' | 'category'
+
 export default function Browse() {
   const { installedAddons, activeInstallationId, installations, settings } = useApp()
 
@@ -31,6 +79,13 @@ export default function Browse() {
   const [page, setPage]         = useState(1)
   const [hasMore, setHasMore]   = useState(false)
   const [ghQuery, setGhQuery]   = useState('')
+  const [sortBy, setSortBy]     = useState<BrowseSortField>('popularity')
+
+  // Category state
+  const [categories, setCategories] = useState<AddonCategory[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<AddonCategory | null>(null)
+  const [mode, setMode] = useState<BrowseMode>('home')
 
   // Detect current WoW flavor for the active installation
   const activeInstall = installations.find(i => i.id === activeInstallationId)
@@ -40,15 +95,40 @@ export default function Browse() {
   const PAGE_SIZE = 20
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const doSearch = useCallback(async (newQuery: string, newPage: number, append = false) => {
+  // Load categories on mount
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  const loadCategories = async () => {
+    setCategoriesLoading(true)
+    try {
+      const cats = await window.api.getCategories()
+      setCategories(cats)
+    } catch (err: any) {
+      console.error('Failed to load categories:', err)
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }
+
+  const doSearch = useCallback(async (
+    newQuery: string,
+    newPage: number,
+    append = false,
+    categoryId?: number,
+    sort?: BrowseSortField
+  ) => {
     setLoading(true)
     try {
       const res = await window.api.searchAddons({
         query: newQuery,
-        provider: provider === 'all' ? undefined : provider,
+        provider: categoryId ? 'curseforge' : provider === 'all' ? undefined : provider,
         flavor,
         page: newPage,
         pageSize: PAGE_SIZE,
+        categoryId,
+        sortBy: sort ?? sortBy,
       })
       setResults(prev => append ? [...prev, ...res] : res)
       setHasMore(res.length >= PAGE_SIZE)
@@ -58,16 +138,50 @@ export default function Browse() {
     } finally {
       setLoading(false)
     }
-  }, [provider, flavor])
+  }, [provider, flavor, sortBy])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    setMode('search')
+    setSelectedCategory(null)
     setPage(1)
     doSearch(query, 1, false)
   }
 
   const handleLoadMore = () => {
-    doSearch(query, page + 1, true)
+    if (mode === 'category' && selectedCategory) {
+      doSearch('', page + 1, true, selectedCategory.id)
+    } else {
+      doSearch(query, page + 1, true)
+    }
+  }
+
+  const handleCategoryClick = (cat: AddonCategory) => {
+    setSelectedCategory(cat)
+    setMode('category')
+    setResults([])
+    setPage(1)
+    doSearch('', 1, false, cat.id, sortBy)
+  }
+
+  const handleSortChange = (newSort: BrowseSortField) => {
+    setSortBy(newSort)
+    if (mode === 'category' && selectedCategory) {
+      setResults([])
+      setPage(1)
+      doSearch('', 1, false, selectedCategory.id, newSort)
+    } else if (mode === 'search' && query) {
+      setResults([])
+      setPage(1)
+      doSearch(query, 1, false, undefined, newSort)
+    }
+  }
+
+  const handleBackToCategories = () => {
+    setMode('home')
+    setSelectedCategory(null)
+    setResults([])
+    setQuery('')
   }
 
   const handleGitHubLookup = async (e: React.FormEvent) => {
@@ -83,6 +197,7 @@ export default function Browse() {
 
       const result = await window.api.githubLookup(ownerRepo)
       if (result) {
+        setMode('search')
         setResults([result, ...results.filter(r => r.externalId !== result.externalId)])
         toast.success('Found GitHub release!', { id: t })
       } else {
@@ -107,7 +222,40 @@ export default function Browse() {
     <div className="flex flex-col h-full page-enter">
       {/* Search bar */}
       <div className="px-5 py-3 border-b border-gray-800 shrink-0 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-200">Browse Addons</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {mode !== 'home' && (
+              <button
+                className="btn-ghost text-xs py-1 px-2"
+                onClick={handleBackToCategories}
+                title="Back to categories"
+              >
+                ← Categories
+              </button>
+            )}
+            <h2 className="text-sm font-semibold text-gray-200">
+              {mode === 'category' && selectedCategory
+                ? selectedCategory.name
+                : 'Browse Addons'}
+            </h2>
+          </div>
+
+          {/* Sort control (visible in category and search modes) */}
+          {(mode === 'category' || mode === 'search') && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Sort:</span>
+              <select
+                className="input text-xs py-1"
+                value={sortBy}
+                onChange={e => handleSortChange(e.target.value as BrowseSortField)}
+              >
+                {SORT_OPTIONS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSearch} className="flex gap-2">
           <input
@@ -141,7 +289,7 @@ export default function Browse() {
           </select>
 
           <button type="submit" className="btn-primary px-5" disabled={loading}>
-            {loading ? '⟳' : '🔍 Search'}
+            {loading && mode === 'search' ? '⟳' : 'Search'}
           </button>
         </form>
 
@@ -167,40 +315,110 @@ export default function Browse() {
         </form>
       </div>
 
-      {/* Results */}
+      {/* Main content area */}
       <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
-        {loading && results.length === 0 ? (
-          <div className="flex justify-center pt-20">
-            <LoadingSpinner message="Searching…" />
-          </div>
-        ) : results.length === 0 ? (
-          <EmptyState
-            icon="🔍"
-            title="Search for addons"
-            description="Enter an addon name above to search across all configured sources."
-          />
-        ) : (
-          <>
-            <p className="text-xs text-gray-600 pb-1">
-              {results.length} result{results.length !== 1 ? 's' : ''}
-            </p>
-            {results.map(r => (
-              <SearchResultCard
-                key={`${r.provider}:${r.externalId}`}
-                result={r}
-                installedAddons={installedAddons}
-              />
-            ))}
-            {hasMore && (
-              <div className="flex justify-center pt-4 pb-8">
-                <button
-                  className="btn-secondary"
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                >
-                  {loading ? 'Loading…' : 'Load More'}
-                </button>
+        {mode === 'home' ? (
+          /* ── Category Grid ─────────────────────────────────────────── */
+          <div>
+            {!settings?.curseForgApiKey && (
+              <div className="text-xs text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded px-3 py-2 mb-4">
+                Category browsing requires a CurseForge API key. Add yours in{' '}
+                <span className="font-semibold">Settings → API Keys</span> to browse addons by category.
               </div>
+            )}
+
+            <h3 className="section-header mb-3">Browse by Category</h3>
+
+            {categoriesLoading ? (
+              <div className="flex justify-center pt-10">
+                <LoadingSpinner message="Loading categories…" />
+              </div>
+            ) : categories.length === 0 ? (
+              <EmptyState
+                icon="📁"
+                title="No categories available"
+                description={
+                  settings?.curseForgApiKey
+                    ? 'Could not load categories. Try again later.'
+                    : 'Add a CurseForge API key in Settings to browse addons by category.'
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    className="card p-3 text-left hover:border-wow-gold/50 hover:bg-wow-dark-2/80 transition-all group cursor-pointer"
+                    onClick={() => handleCategoryClick(cat)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {cat.iconUrl ? (
+                        <img
+                          src={cat.iconUrl}
+                          alt=""
+                          className="w-6 h-6 rounded"
+                          onError={e => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <span className="text-lg">{getCategoryIcon(cat.name)}</span>
+                      )}
+                      <span className="text-sm text-gray-200 group-hover:text-wow-gold transition-colors truncate">
+                        {cat.name}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ── Search / Category Results ──────────────────────────────── */
+          <>
+            {loading && results.length === 0 ? (
+              <div className="flex justify-center pt-20">
+                <LoadingSpinner message={
+                  mode === 'category' ? `Loading ${selectedCategory?.name ?? 'category'}…` : 'Searching…'
+                } />
+              </div>
+            ) : results.length === 0 ? (
+              <EmptyState
+                icon={mode === 'category' ? '📁' : '🔍'}
+                title={mode === 'category' ? 'No addons found' : 'Search for addons'}
+                description={
+                  mode === 'category'
+                    ? `No addons found in ${selectedCategory?.name ?? 'this category'}.`
+                    : 'Enter an addon name above to search across all configured sources.'
+                }
+              />
+            ) : (
+              <>
+                <p className="text-xs text-gray-600 pb-1">
+                  {results.length} result{results.length !== 1 ? 's' : ''}
+                  {mode === 'category' && selectedCategory && (
+                    <> in <span className="text-gray-400">{selectedCategory.name}</span></>
+                  )}
+                </p>
+                {results.map(r => (
+                  <SearchResultCard
+                    key={`${r.provider}:${r.externalId}`}
+                    result={r}
+                    installedAddons={installedAddons}
+                  />
+                ))}
+                {hasMore && (
+                  <div className="flex justify-center pt-4 pb-8">
+                    <button
+                      className="btn-secondary"
+                      onClick={handleLoadMore}
+                      disabled={loading}
+                    >
+                      {loading ? 'Loading…' : 'Load More'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

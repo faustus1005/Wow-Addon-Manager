@@ -601,6 +601,10 @@ class BaseProvider {
   async getDetails(externalId, _flavor) {
     return { externalId };
   }
+  /** Get available versions for an addon (for version picker). Override in subclasses. */
+  async getVersions(_sourceId, _channel) {
+    return [];
+  }
 }
 const WAGO_BASE = "https://addons.wago.io/api";
 const FLAVOR_MAP = {
@@ -691,6 +695,33 @@ class WagoProvider extends BaseProvider {
       return null;
     }
   }
+  async getVersions(sourceId, channel) {
+    if (!sourceId || !this.apiKey) return [];
+    try {
+      const gameVersion = FLAVOR_MAP[this.activeFlavor] ?? "retail";
+      const res = await this.client.get(
+        `/external/addons/${sourceId}`,
+        { params: { game_version: gameVersion } }
+      );
+      const releases = res.data.recent_release ?? {};
+      const versions = [];
+      for (const [ch, release] of Object.entries(releases)) {
+        if (!release) continue;
+        const url = release.download_link ?? release.link;
+        if (!url) continue;
+        versions.push({
+          version: release.label,
+          displayName: `${release.label} (${ch})`,
+          downloadUrl: url,
+          releaseDate: release.created_at,
+          releaseType: ch
+        });
+      }
+      return versions;
+    } catch {
+      return [];
+    }
+  }
   async getDetails(externalId, flavor) {
     if (!this.apiKey) return { externalId };
     try {
@@ -723,6 +754,12 @@ const CHANNEL_TYPE = {
   stable: [1],
   beta: [1, 2],
   alpha: [1, 2, 3]
+};
+const CF_SORT_MAP = {
+  popularity: 2,
+  name: 4,
+  downloads: 6,
+  updated: 3
 };
 class CurseForgeProvider extends BaseProvider {
   name = "curseforge";
@@ -766,6 +803,36 @@ class CurseForgeProvider extends BaseProvider {
       return "";
     }
   }
+  // ── Category cache ──────────────────────────────────────────────────────
+  categoryCache = null;
+  categoryCacheTime = 0;
+  CATEGORY_TTL = 60 * 60 * 1e3;
+  // 1 hour
+  async getCategories() {
+    if (!this.apiKey) return [];
+    const now = Date.now();
+    if (this.categoryCache && now - this.categoryCacheTime < this.CATEGORY_TTL) {
+      return this.categoryCache;
+    }
+    try {
+      const res = await this.client.get("/categories", {
+        params: { gameId: WOW_GAME_ID }
+      });
+      const categories = (res.data.data ?? []).filter((c) => !c.isClass && c.parentCategoryId && c.parentCategoryId > 0).map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        iconUrl: c.iconUrl,
+        parentId: c.parentCategoryId
+      })).sort((a, b) => a.name.localeCompare(b.name));
+      this.categoryCache = categories;
+      this.categoryCacheTime = now;
+      return categories;
+    } catch (err) {
+      console.error("Failed to fetch CurseForge categories:", err);
+      return this.categoryCache ?? [];
+    }
+  }
   mapMod(mod, channel = "stable") {
     const allowedTypes = CHANNEL_TYPE[channel];
     const latestFile = (mod.latestFiles ?? []).filter((f) => allowedTypes.includes(f.releaseType)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0];
@@ -780,23 +847,26 @@ class CurseForgeProvider extends BaseProvider {
       websiteUrl: mod.links?.websiteUrl,
       latestVersion: latestFile?.displayName ?? latestFile?.fileName ?? "0",
       downloadUrl: latestFile?.downloadUrl ?? void 0,
-      releaseDate: latestFile?.fileDate
+      releaseDate: latestFile?.fileDate,
+      categories: mod.categories?.map((c) => c.name)
     };
   }
-  async search(query, flavor, page = 1, pageSize = 20) {
+  async search(query, flavor, page = 1, pageSize = 20, categoryId, sortBy) {
     if (!this.apiKey) return [];
     const gameVersionTypeId = GAME_VERSION_TYPE_MAP[flavor];
+    const cfSortField = sortBy ? CF_SORT_MAP[sortBy] : 2;
+    const sortOrder = sortBy === "name" ? "asc" : "desc";
     const params = {
       gameId: WOW_GAME_ID,
       // Do NOT pass classId – the WoW class ID is not 6 (that is Minecraft mods).
       // gameId=1 already scopes results to WoW addons exclusively.
       searchFilter: query.trim() || void 0,
       ...gameVersionTypeId ? { gameVersionTypeId } : {},
+      ...categoryId ? { categoryId } : {},
       index: (page - 1) * pageSize,
       pageSize,
-      sortField: 2,
-      // 2 = Popularity
-      sortOrder: "desc"
+      sortField: cfSortField,
+      sortOrder
     };
     const res = await this.client.get("/mods/search", { params });
     return (res.data.data ?? []).map((m) => this.mapMod(m));
@@ -820,6 +890,38 @@ class CurseForgeProvider extends BaseProvider {
       };
     } catch {
       return null;
+    }
+  }
+  cfReleaseType(type) {
+    if (type === 3) return "alpha";
+    if (type === 2) return "beta";
+    return "stable";
+  }
+  async getVersions(sourceId, channel) {
+    if (!this.apiKey || !sourceId) return [];
+    try {
+      const allowedTypes = CHANNEL_TYPE[channel];
+      const res = await this.client.get(
+        `/mods/${sourceId}/files`,
+        { params: { pageSize: 50 } }
+      );
+      const files = (res.data.data ?? []).filter((f) => allowedTypes.includes(f.releaseType)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime());
+      const versions = [];
+      for (const f of files) {
+        const downloadUrl = await this.resolveDownloadUrl(sourceId, f);
+        if (!downloadUrl) continue;
+        versions.push({
+          version: f.displayName || f.fileName,
+          displayName: f.displayName || f.fileName,
+          downloadUrl,
+          releaseDate: f.fileDate,
+          releaseType: this.cfReleaseType(f.releaseType),
+          gameVersions: f.gameVersions
+        });
+      }
+      return versions;
+    } catch {
+      return [];
     }
   }
 }
@@ -906,6 +1008,23 @@ class WoWInterfaceProvider extends BaseProvider {
       return null;
     }
   }
+  async getVersions(sourceId, _channel) {
+    if (!sourceId) return [];
+    try {
+      const res = await this.client.get(`/filedetails/${sourceId}.json`);
+      const d = Array.isArray(res.data) ? res.data[0] : null;
+      if (!d) return [];
+      return [{
+        version: d.UIVersion,
+        displayName: d.UIVersion,
+        downloadUrl: d.UIDownload,
+        releaseDate: d.UIDate ? new Date(d.UIDate).toISOString() : void 0,
+        releaseType: "stable"
+      }];
+    } catch {
+      return [];
+    }
+  }
   async getDetails(externalId, _flavor) {
     try {
       const res = await this.client.get(`/filedetails/${externalId}.json`);
@@ -969,6 +1088,32 @@ class GitHubProvider extends BaseProvider {
       };
     } catch {
       return null;
+    }
+  }
+  async getVersions(sourceId, channel) {
+    if (!sourceId || !sourceId.includes("/")) return [];
+    try {
+      const res = await this.client.get(
+        `/repos/${sourceId}/releases`,
+        { params: { per_page: 30 } }
+      );
+      const versions = [];
+      for (const r of res.data) {
+        if (r.draft) continue;
+        if (channel === "stable" && r.prerelease) continue;
+        const asset = this.pickAsset(r.assets);
+        if (!asset) continue;
+        versions.push({
+          version: r.tag_name.replace(/^v/, ""),
+          displayName: r.name || r.tag_name,
+          downloadUrl: asset.browser_download_url,
+          releaseDate: r.published_at,
+          releaseType: r.prerelease ? "beta" : "stable"
+        });
+      }
+      return versions;
+    } catch {
+      return [];
     }
   }
   /** Convert a GitHub repo "owner/repo" to a search result card */
@@ -1043,16 +1188,16 @@ function registerIpcHandlers(win) {
     return getInstalledAddons(installationId);
   });
   electron.ipcMain.handle("addon:search", async (_e, payload) => {
-    const { query, provider, flavor = "retail", page = 1, pageSize = 20 } = payload;
+    const { query, provider, flavor = "retail", page = 1, pageSize = 20, categoryId, sortBy } = payload;
     const results = [];
-    const providers = provider ? [provider] : ["wago", "curseforge", "wowinterface"];
+    const providers = categoryId ? ["curseforge"] : provider ? [provider] : ["wago", "curseforge", "wowinterface"];
     const searches = providers.map(async (p) => {
       try {
         switch (p) {
           case "wago":
             return await wago$1.search(query, flavor, page, pageSize);
           case "curseforge":
-            return await curseforge$1.search(query, flavor, page, pageSize);
+            return await curseforge$1.search(query, flavor, page, pageSize, categoryId, sortBy);
           case "wowinterface":
             return await wowinterface$1.search(query, flavor, page, pageSize);
         }
@@ -1066,7 +1211,13 @@ function registerIpcHandlers(win) {
     for (const batch of batches) {
       if (batch.status === "fulfilled" && batch.value) results.push(...batch.value);
     }
-    return results.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0));
+    if (!sortBy || !categoryId) {
+      return results.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0));
+    }
+    return results;
+  });
+  electron.ipcMain.handle("addon:get-categories", async () => {
+    return curseforge$1.getCategories();
   });
   electron.ipcMain.handle("addon:github-lookup", async (_e, ownerRepo) => {
     return github$1.getRepoInfo(ownerRepo);
@@ -1214,6 +1365,70 @@ function registerIpcHandlers(win) {
     saveInstalledAddons(installationId, addons);
     return addon;
   });
+  electron.ipcMain.handle("addon:get-versions", async (_e, payload) => {
+    const { addonId, installationId } = payload;
+    const addons = getInstalledAddons(installationId);
+    const addon = addons.find((a) => a.id === addonId);
+    if (!addon || !addon.sourceId) return [];
+    const settings = getSettings();
+    const installation = settings.wowInstallations.find((i) => i.id === installationId);
+    if (installation) wago$1.setActiveFlavor(installation.flavor);
+    const channel = addon.channelPreference ?? settings.defaultChannel;
+    switch (addon.provider) {
+      case "curseforge":
+        return curseforge$1.getVersions(addon.sourceId, channel);
+      case "github":
+        return github$1.getVersions(addon.sourceId, channel);
+      case "wowinterface":
+        return wowinterface$1.getVersions(addon.sourceId, channel);
+      case "wago":
+        return wago$1.getVersions(addon.sourceId, channel);
+      default:
+        return [];
+    }
+  });
+  electron.ipcMain.handle("addon:pin-version", async (_e, payload) => {
+    const { addonId, installationId, version, downloadUrl } = payload;
+    const settings = getSettings();
+    const installation = settings.wowInstallations.find((i) => i.id === installationId);
+    if (!installation) throw new Error(`Installation not found: ${installationId}`);
+    const addons = getInstalledAddons(installationId);
+    const addon = addons.find((a) => a.id === addonId);
+    if (!addon) throw new Error(`Addon not found: ${addonId}`);
+    const result = {
+      externalId: addon.sourceId ?? addonId,
+      provider: addon.provider,
+      name: addon.name,
+      summary: addon.notes,
+      author: addon.author,
+      downloadCount: 0,
+      latestVersion: version,
+      downloadUrl,
+      websiteUrl: addon.websiteUrl,
+      thumbnailUrl: addon.thumbnailUrl
+    };
+    const installed = await installAddon(result, installation, addon.channelPreference, win);
+    const updatedAddons = getInstalledAddons(installationId);
+    const updatedAddon = updatedAddons.find((a) => a.id === addonId);
+    if (updatedAddon) {
+      updatedAddon.pinnedVersion = version;
+      updatedAddon.pinnedDownloadUrl = downloadUrl;
+      updatedAddon.autoUpdate = false;
+      saveInstalledAddons(installationId, updatedAddons);
+      return updatedAddon;
+    }
+    return installed;
+  });
+  electron.ipcMain.handle("addon:unpin-version", (_e, payload) => {
+    const { addonId, installationId } = payload;
+    const addons = getInstalledAddons(installationId);
+    const addon = addons.find((a) => a.id === addonId);
+    if (!addon) throw new Error(`Addon not found: ${addonId}`);
+    addon.pinnedVersion = void 0;
+    addon.pinnedDownloadUrl = void 0;
+    saveInstalledAddons(installationId, addons);
+    return addon;
+  });
   electron.ipcMain.handle("shell:open-url", (_e, url) => electron.shell.openExternal(url));
   electron.ipcMain.handle("shell:open-path", (_e, p) => electron.shell.openPath(p));
   electron.ipcMain.handle("addon:update-all", async (_e, installationId) => {
@@ -1221,7 +1436,7 @@ function registerIpcHandlers(win) {
     const installation = settings.wowInstallations.find((i) => i.id === installationId);
     if (!installation) throw new Error(`Installation not found: ${installationId}`);
     const addons = getInstalledAddons(installationId).filter(
-      (a) => a.updateAvailable && !a.isIgnored
+      (a) => a.updateAvailable && !a.isIgnored && !a.pinnedVersion
     );
     const updated = [];
     for (const addon of addons) {
@@ -1288,7 +1503,7 @@ async function runBackgroundUpdateCheck(win) {
           addon.latestVersion = info.latestVersion;
           addon.downloadUrl = info.downloadUrl;
           addon.updateAvailable = hasUpdate;
-          if (hasUpdate && addon.autoUpdate && info.downloadUrl) {
+          if (hasUpdate && addon.autoUpdate && !addon.pinnedVersion && info.downloadUrl) {
             const result = {
               externalId: addon.sourceId ?? addon.id,
               provider: addon.provider,

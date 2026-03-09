@@ -8,7 +8,7 @@
  * (60 req/hr unauthenticated, 5000/hr with token).
  */
 import axios, { AxiosInstance } from 'axios'
-import { AddonSearchResult, InstalledAddon, ReleaseChannel } from '../../shared/types'
+import { AddonSearchResult, AddonVersionInfo, InstalledAddon, ReleaseChannel } from '../../shared/types'
 import { BaseProvider, UpdateInfo } from './base-provider'
 
 const GH_BASE = 'https://api.github.com'
@@ -103,6 +103,33 @@ export class GitHubProvider extends BaseProvider {
       }
     } catch {
       return null
+    }
+  }
+
+  async getVersions(sourceId: string, channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+    if (!sourceId || !sourceId.includes('/')) return []
+    try {
+      const res = await this.client.get<GHRelease[]>(
+        `/repos/${sourceId}/releases`,
+        { params: { per_page: 30 } }
+      )
+      const versions: AddonVersionInfo[] = []
+      for (const r of res.data) {
+        if (r.draft) continue
+        if (channel === 'stable' && r.prerelease) continue
+        const asset = this.pickAsset(r.assets)
+        if (!asset) continue
+        versions.push({
+          version: r.tag_name.replace(/^v/, ''),
+          displayName: r.name || r.tag_name,
+          downloadUrl: asset.browser_download_url,
+          releaseDate: r.published_at,
+          releaseType: r.prerelease ? 'beta' : 'stable',
+        })
+      }
+      return versions
+    } catch {
+      return []
     }
   }
 

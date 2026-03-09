@@ -49,6 +49,38 @@ export interface InstalledAddon {
   thumbnailUrl?: string
   autoUpdate: boolean
   isIgnored: boolean
+  /** When set, the addon is locked to this specific version and won't auto-update */
+  pinnedVersion?: string
+  /** Download URL for the pinned version (stored at pin time) */
+  pinnedDownloadUrl?: string
+}
+
+// ─── Version Info (for version picker) ──────────────────────────────────────
+
+export interface AddonVersionInfo {
+  version: string
+  displayName: string
+  downloadUrl: string
+  releaseDate?: string
+  releaseType: ReleaseChannel
+  gameVersions?: string[]
+}
+
+export interface GetVersionsPayload {
+  addonId: string
+  installationId: string
+}
+
+export interface PinVersionPayload {
+  addonId: string
+  installationId: string
+  version: string
+  downloadUrl: string
+}
+
+export interface UnpinVersionPayload {
+  addonId: string
+  installationId: string
 }
 
 // ─── Search / Browse Results ────────────────────────────────────────────────
@@ -106,12 +138,28 @@ export interface CheckUpdatesPayload {
   installationId: string
 }
 
+export type BrowseSortField = 'popularity' | 'name' | 'downloads' | 'updated'
+
 export interface SearchPayload {
   query: string
   provider?: AddonProvider
   flavor?: WowFlavor
   page?: number
   pageSize?: number
+  categoryId?: number
+  sortBy?: BrowseSortField
+}
+
+export interface AddonCategory {
+  id: number
+  name: string
+  slug: string
+  iconUrl?: string
+  parentId?: number
+}
+
+export interface BrowseCategoriesPayload {
+  flavor?: WowFlavor
 }
 
 export interface DownloadProgress {

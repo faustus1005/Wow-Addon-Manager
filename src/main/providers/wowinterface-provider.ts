@@ -10,7 +10,7 @@
  * WoWInterface does NOT require an API key for read-only access.
  */
 import axios, { AxiosInstance } from 'axios'
-import { AddonSearchResult, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
+import { AddonSearchResult, AddonVersionInfo, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
 import { BaseProvider, UpdateInfo } from './base-provider'
 
 const WOWI_BASE = 'https://api.mmoui.com/v3/game/WOW'
@@ -138,6 +138,25 @@ export class WoWInterfaceProvider extends BaseProvider {
       }
     } catch {
       return null
+    }
+  }
+
+  async getVersions(sourceId: string, _channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+    // WoWInterface only serves the latest version per addon
+    if (!sourceId) return []
+    try {
+      const res = await this.client.get<WowiDetails[]>(`/filedetails/${sourceId}.json`)
+      const d = Array.isArray(res.data) ? res.data[0] : null
+      if (!d) return []
+      return [{
+        version: d.UIVersion,
+        displayName: d.UIVersion,
+        downloadUrl: d.UIDownload,
+        releaseDate: d.UIDate ? new Date(d.UIDate).toISOString() : undefined,
+        releaseType: 'stable',
+      }]
+    } catch {
+      return []
     }
   }
 

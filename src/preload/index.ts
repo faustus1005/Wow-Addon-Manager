@@ -8,11 +8,16 @@ import type {
   InstalledAddon,
   WowInstallation,
   AddonSearchResult,
+  AddonCategory,
+  AddonVersionInfo,
   SearchPayload,
   InstallPayload,
   UpdatePayload,
   UninstallPayload,
   LinkAddonPayload,
+  GetVersionsPayload,
+  PinVersionPayload,
+  UnpinVersionPayload,
   DownloadProgress,
 } from '../shared/types'
 
@@ -44,6 +49,8 @@ const api = {
     ipcRenderer.invoke('addon:search', payload),
   githubLookup: (ownerRepo: string): Promise<AddonSearchResult | null> =>
     ipcRenderer.invoke('addon:github-lookup', ownerRepo),
+  getCategories: (): Promise<AddonCategory[]> =>
+    ipcRenderer.invoke('addon:get-categories'),
 
   // Install / Update / Uninstall
   installAddon: (payload: InstallPayload): Promise<InstalledAddon> =>
@@ -68,6 +75,14 @@ const api = {
     ipcRenderer.invoke('addon:set-ignored', { installationId, addonId, ignored }),
   setAutoUpdate: (installationId: string, addonId: string, enabled: boolean): Promise<InstalledAddon> =>
     ipcRenderer.invoke('addon:set-auto-update', { installationId, addonId, enabled }),
+
+  // Version picker / pinning
+  getAddonVersions: (payload: GetVersionsPayload): Promise<AddonVersionInfo[]> =>
+    ipcRenderer.invoke('addon:get-versions', payload),
+  pinVersion: (payload: PinVersionPayload): Promise<InstalledAddon> =>
+    ipcRenderer.invoke('addon:pin-version', payload),
+  unpinVersion: (payload: UnpinVersionPayload): Promise<InstalledAddon> =>
+    ipcRenderer.invoke('addon:unpin-version', payload),
 
   // Shell
   openUrl: (url: string): Promise<void> =>

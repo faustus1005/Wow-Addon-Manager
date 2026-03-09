@@ -13,7 +13,7 @@
  * WoW game ID: 1 (all flavors). gameVersionTypeId is used for expansion-specific filtering.
  */
 import axios, { AxiosInstance } from 'axios'
-import { AddonSearchResult, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
+import { AddonSearchResult, AddonCategory, AddonVersionInfo, InstalledAddon, ReleaseChannel, WowFlavor, BrowseSortField } from '../../shared/types'
 import { BaseProvider, UpdateInfo } from './base-provider'
 
 const CF_BASE = 'https://api.curseforge.com/v1'
@@ -47,6 +47,7 @@ interface CFMod {
   links?: { websiteUrl: string }
   latestFilesIndexes?: { gameVersion: string; fileId: number; filename: string; releaseType: number }[]
   latestFiles?: CFFile[]
+  categories?: { id: number; name: string }[]
 }
 
 interface CFFile {
@@ -66,6 +67,26 @@ interface CFFileDetailsResponse {
 interface CFSearchResponse {
   data: CFMod[]
   pagination?: { totalCount: number; resultCount: number; index: number; pageSize: number }
+}
+
+interface CFCategory {
+  id: number
+  gameId: number
+  name: string
+  slug: string
+  url: string
+  iconUrl?: string
+  parentCategoryId?: number
+  isClass?: boolean
+  classId?: number
+}
+
+// CurseForge sortField values: 1=Featured, 2=Popularity, 3=LastUpdated, 4=Name, 5=Author, 6=TotalDownloads
+const CF_SORT_MAP: Record<BrowseSortField, number> = {
+  popularity: 2,
+  name: 4,
+  downloads: 6,
+  updated: 3,
 }
 
 export class CurseForgeProvider extends BaseProvider {
@@ -117,6 +138,46 @@ export class CurseForgeProvider extends BaseProvider {
     }
   }
 
+  // ── Category cache ──────────────────────────────────────────────────────
+  private categoryCache: AddonCategory[] | null = null
+  private categoryCacheTime = 0
+  private readonly CATEGORY_TTL = 60 * 60 * 1000 // 1 hour
+
+  async getCategories(): Promise<AddonCategory[]> {
+    if (!this.apiKey) return []
+
+    const now = Date.now()
+    if (this.categoryCache && now - this.categoryCacheTime < this.CATEGORY_TTL) {
+      return this.categoryCache
+    }
+
+    try {
+      const res = await this.client.get<{ data: CFCategory[] }>('/categories', {
+        params: { gameId: WOW_GAME_ID },
+      })
+
+      // Filter to top-level addon categories (parentCategoryId === 0 or isClass)
+      // and exclude non-addon classes
+      const categories: AddonCategory[] = (res.data.data ?? [])
+        .filter(c => !c.isClass && c.parentCategoryId && c.parentCategoryId > 0)
+        .map(c => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          iconUrl: c.iconUrl,
+          parentId: c.parentCategoryId,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      this.categoryCache = categories
+      this.categoryCacheTime = now
+      return categories
+    } catch (err) {
+      console.error('Failed to fetch CurseForge categories:', err)
+      return this.categoryCache ?? []
+    }
+  }
+
   private mapMod(mod: CFMod, channel: ReleaseChannel = 'stable'): AddonSearchResult {
     const allowedTypes = CHANNEL_TYPE[channel]
     const latestFile = (mod.latestFiles ?? [])
@@ -135,6 +196,7 @@ export class CurseForgeProvider extends BaseProvider {
       latestVersion: latestFile?.displayName ?? latestFile?.fileName ?? '0',
       downloadUrl: latestFile?.downloadUrl ?? undefined,
       releaseDate: latestFile?.fileDate,
+      categories: mod.categories?.map(c => c.name),
     }
   }
 
@@ -142,21 +204,26 @@ export class CurseForgeProvider extends BaseProvider {
     query: string,
     flavor: WowFlavor,
     page = 1,
-    pageSize = 20
+    pageSize = 20,
+    categoryId?: number,
+    sortBy?: BrowseSortField
   ): Promise<AddonSearchResult[]> {
     if (!this.apiKey) return []
 
     const gameVersionTypeId = GAME_VERSION_TYPE_MAP[flavor]
+    const cfSortField = sortBy ? CF_SORT_MAP[sortBy] : 2
+    const sortOrder = sortBy === 'name' ? 'asc' : 'desc'
     const params = {
       gameId: WOW_GAME_ID,
       // Do NOT pass classId – the WoW class ID is not 6 (that is Minecraft mods).
       // gameId=1 already scopes results to WoW addons exclusively.
       searchFilter: query.trim() || undefined,
       ...(gameVersionTypeId ? { gameVersionTypeId } : {}),
+      ...(categoryId ? { categoryId } : {}),
       index: (page - 1) * pageSize,
       pageSize,
-      sortField: 2,    // 2 = Popularity
-      sortOrder: 'desc',
+      sortField: cfSortField,
+      sortOrder,
     }
 
     const res = await this.client.get<CFSearchResponse>('/mods/search', { params })
@@ -190,6 +257,44 @@ export class CurseForgeProvider extends BaseProvider {
       }
     } catch {
       return null
+    }
+  }
+
+  private cfReleaseType(type: number): ReleaseChannel {
+    if (type === 3) return 'alpha'
+    if (type === 2) return 'beta'
+    return 'stable'
+  }
+
+  async getVersions(sourceId: string, channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+    if (!this.apiKey || !sourceId) return []
+    try {
+      const allowedTypes = CHANNEL_TYPE[channel]
+      const res = await this.client.get<{ data: CFFile[] }>(
+        `/mods/${sourceId}/files`,
+        { params: { pageSize: 50 } }
+      )
+
+      const files = (res.data.data ?? [])
+        .filter(f => allowedTypes.includes(f.releaseType))
+        .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())
+
+      const versions: AddonVersionInfo[] = []
+      for (const f of files) {
+        const downloadUrl = await this.resolveDownloadUrl(sourceId, f)
+        if (!downloadUrl) continue
+        versions.push({
+          version: f.displayName || f.fileName,
+          displayName: f.displayName || f.fileName,
+          downloadUrl,
+          releaseDate: f.fileDate,
+          releaseType: this.cfReleaseType(f.releaseType),
+          gameVersions: f.gameVersions,
+        })
+      }
+      return versions
+    } catch {
+      return []
     }
   }
 }

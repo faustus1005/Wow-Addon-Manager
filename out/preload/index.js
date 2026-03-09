@@ -14,6 +14,7 @@ const api = {
   // Searching
   searchAddons: (payload) => electron.ipcRenderer.invoke("addon:search", payload),
   githubLookup: (ownerRepo) => electron.ipcRenderer.invoke("addon:github-lookup", ownerRepo),
+  getCategories: () => electron.ipcRenderer.invoke("addon:get-categories"),
   // Install / Update / Uninstall
   installAddon: (payload) => electron.ipcRenderer.invoke("addon:install", payload),
   updateAddon: (payload) => electron.ipcRenderer.invoke("addon:update", payload),
@@ -26,6 +27,10 @@ const api = {
   // Addon flags
   setIgnored: (installationId, addonId, ignored) => electron.ipcRenderer.invoke("addon:set-ignored", { installationId, addonId, ignored }),
   setAutoUpdate: (installationId, addonId, enabled) => electron.ipcRenderer.invoke("addon:set-auto-update", { installationId, addonId, enabled }),
+  // Version picker / pinning
+  getAddonVersions: (payload) => electron.ipcRenderer.invoke("addon:get-versions", payload),
+  pinVersion: (payload) => electron.ipcRenderer.invoke("addon:pin-version", payload),
+  unpinVersion: (payload) => electron.ipcRenderer.invoke("addon:unpin-version", payload),
   // Shell
   openUrl: (url) => electron.ipcRenderer.invoke("shell:open-url", url),
   openPath: (p) => electron.ipcRenderer.invoke("shell:open-path", p),

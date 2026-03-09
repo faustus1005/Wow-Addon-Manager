@@ -19,8 +19,14 @@ import {
   UpdatePayload,
   UninstallPayload,
   LinkAddonPayload,
+  GetVersionsPayload,
+  PinVersionPayload,
+  UnpinVersionPayload,
+  BrowseCategoriesPayload,
   WowFlavor,
   AddonSearchResult,
+  AddonCategory,
+  AddonVersionInfo,
   normalizeVersion,
 } from '../shared/types'
 
@@ -91,18 +97,21 @@ export function registerIpcHandlers(win: BrowserWindow) {
   // ── Searching ────────────────────────────────────────────────────────────
 
   ipcMain.handle('addon:search', async (_e, payload: SearchPayload) => {
-    const { query, provider, flavor = 'retail', page = 1, pageSize = 20 } = payload
+    const { query, provider, flavor = 'retail', page = 1, pageSize = 20, categoryId, sortBy } = payload
     const results: AddonSearchResult[] = []
 
-    const providers = provider
-      ? [provider]
-      : ['wago', 'curseforge', 'wowinterface'] as const
+    // If browsing by category, only use CurseForge (only provider with category support)
+    const providers = categoryId
+      ? ['curseforge'] as const
+      : provider
+        ? [provider]
+        : ['wago', 'curseforge', 'wowinterface'] as const
 
     const searches = providers.map(async p => {
       try {
         switch (p) {
           case 'wago':        return await wago.search(query, flavor, page, pageSize)
-          case 'curseforge':  return await curseforge.search(query, flavor, page, pageSize)
+          case 'curseforge':  return await curseforge.search(query, flavor, page, pageSize, categoryId, sortBy)
           case 'wowinterface':return await wowinterface.search(query, flavor, page, pageSize)
         }
       } catch (err) {
@@ -117,8 +126,17 @@ export function registerIpcHandlers(win: BrowserWindow) {
       if (batch.status === 'fulfilled' && batch.value) results.push(...batch.value)
     }
 
-    // Sort by downloads desc
-    return results.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0))
+    // If not using server-side sorting, sort by downloads desc
+    if (!sortBy || !categoryId) {
+      return results.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0))
+    }
+    return results
+  })
+
+  // ── Categories ──────────────────────────────────────────────────────────
+
+  ipcMain.handle('addon:get-categories', async () => {
+    return curseforge.getCategories()
   })
 
   // GitHub repo lookup (direct URL / "owner/repo")
@@ -297,6 +315,79 @@ export function registerIpcHandlers(win: BrowserWindow) {
     return addon
   })
 
+  // ── Version Picker / Pinning ────────────────────────────────────────────
+
+  ipcMain.handle('addon:get-versions', async (_e, payload: GetVersionsPayload) => {
+    const { addonId, installationId } = payload
+    const addons = getInstalledAddons(installationId)
+    const addon = addons.find(a => a.id === addonId)
+    if (!addon || !addon.sourceId) return []
+
+    const settings = getSettings()
+    const installation = settings.wowInstallations.find(i => i.id === installationId)
+    if (installation) wago.setActiveFlavor(installation.flavor)
+
+    const channel = addon.channelPreference ?? settings.defaultChannel
+
+    switch (addon.provider) {
+      case 'curseforge':   return curseforge.getVersions(addon.sourceId, channel)
+      case 'github':       return github.getVersions(addon.sourceId, channel)
+      case 'wowinterface': return wowinterface.getVersions(addon.sourceId, channel)
+      case 'wago':         return wago.getVersions(addon.sourceId, channel)
+      default:             return []
+    }
+  })
+
+  ipcMain.handle('addon:pin-version', async (_e, payload: PinVersionPayload) => {
+    const { addonId, installationId, version, downloadUrl } = payload
+    const settings = getSettings()
+    const installation = settings.wowInstallations.find(i => i.id === installationId)
+    if (!installation) throw new Error(`Installation not found: ${installationId}`)
+
+    const addons = getInstalledAddons(installationId)
+    const addon = addons.find(a => a.id === addonId)
+    if (!addon) throw new Error(`Addon not found: ${addonId}`)
+
+    // Install the pinned version
+    const result: AddonSearchResult = {
+      externalId: addon.sourceId ?? addonId,
+      provider: addon.provider,
+      name: addon.name,
+      summary: addon.notes,
+      author: addon.author,
+      downloadCount: 0,
+      latestVersion: version,
+      downloadUrl,
+      websiteUrl: addon.websiteUrl,
+      thumbnailUrl: addon.thumbnailUrl,
+    }
+    const installed = await installAddon(result, installation, addon.channelPreference, win)
+
+    // Mark as pinned in the stored addon list
+    const updatedAddons = getInstalledAddons(installationId)
+    const updatedAddon = updatedAddons.find(a => a.id === addonId)
+    if (updatedAddon) {
+      updatedAddon.pinnedVersion = version
+      updatedAddon.pinnedDownloadUrl = downloadUrl
+      updatedAddon.autoUpdate = false
+      saveInstalledAddons(installationId, updatedAddons)
+      return updatedAddon
+    }
+    return installed
+  })
+
+  ipcMain.handle('addon:unpin-version', (_e, payload: UnpinVersionPayload) => {
+    const { addonId, installationId } = payload
+    const addons = getInstalledAddons(installationId)
+    const addon = addons.find(a => a.id === addonId)
+    if (!addon) throw new Error(`Addon not found: ${addonId}`)
+
+    addon.pinnedVersion = undefined
+    addon.pinnedDownloadUrl = undefined
+    saveInstalledAddons(installationId, addons)
+    return addon
+  })
+
   // ── Shell helpers ────────────────────────────────────────────────────────
 
   ipcMain.handle('shell:open-url', (_e, url: string) => shell.openExternal(url))
@@ -310,7 +401,7 @@ export function registerIpcHandlers(win: BrowserWindow) {
     if (!installation) throw new Error(`Installation not found: ${installationId}`)
 
     const addons = getInstalledAddons(installationId).filter(
-      a => a.updateAvailable && !a.isIgnored
+      a => a.updateAvailable && !a.isIgnored && !a.pinnedVersion
     )
     const updated: InstalledAddon[] = []
 

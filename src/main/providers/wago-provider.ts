@@ -14,7 +14,7 @@
  *   • The API key can be obtained at https://addons.wago.io/patreon
  */
 import axios, { AxiosInstance } from 'axios'
-import { AddonSearchResult, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
+import { AddonSearchResult, AddonVersionInfo, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
 import { BaseProvider, UpdateInfo } from './base-provider'
 
 const WAGO_BASE = 'https://addons.wago.io/api'
@@ -145,6 +145,35 @@ export class WagoProvider extends BaseProvider {
       }
     } catch {
       return null
+    }
+  }
+
+  async getVersions(sourceId: string, channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+    // Wago only provides latest per channel, not a full version history
+    if (!sourceId || !this.apiKey) return []
+    try {
+      const gameVersion = FLAVOR_MAP[this.activeFlavor] ?? 'retail'
+      const res = await this.client.get<WagoAddon>(
+        `/external/addons/${sourceId}`,
+        { params: { game_version: gameVersion } },
+      )
+      const releases = res.data.recent_release ?? {}
+      const versions: AddonVersionInfo[] = []
+      for (const [ch, release] of Object.entries(releases)) {
+        if (!release) continue
+        const url = release.download_link ?? release.link
+        if (!url) continue
+        versions.push({
+          version: release.label,
+          displayName: `${release.label} (${ch})`,
+          downloadUrl: url,
+          releaseDate: release.created_at,
+          releaseType: ch as ReleaseChannel,
+        })
+      }
+      return versions
+    } catch {
+      return []
     }
   }
 

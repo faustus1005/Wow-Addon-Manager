@@ -1,4 +1,4 @@
-import { AddonSearchResult, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
+import { AddonSearchResult, AddonVersionInfo, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
 
 export interface UpdateInfo {
   latestVersion: string
@@ -27,5 +27,10 @@ export abstract class BaseProvider {
   /** Fetch full details for a single result (optional, enriches thumbnails etc.) */
   async getDetails(externalId: string, _flavor: WowFlavor): Promise<Partial<AddonSearchResult>> {
     return { externalId }
+  }
+
+  /** Get available versions for an addon (for version picker). Override in subclasses. */
+  async getVersions(_sourceId: string, _channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+    return []
   }
 }
