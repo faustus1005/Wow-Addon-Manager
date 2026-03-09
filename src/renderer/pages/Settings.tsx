@@ -55,11 +55,11 @@ export default function Settings() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto page-enter">
-      <div className="px-6 py-4 border-b border-gray-800 shrink-0">
-        <h2 className="text-sm font-semibold text-gray-200">Settings</h2>
+      <div className="px-8 py-5 border-b border-gray-800 shrink-0">
+        <h2 className="text-base font-semibold text-gray-200">Settings</h2>
       </div>
 
-      <div className="flex-1 px-6 py-5 space-y-8 max-w-2xl">
+      <div className="flex-1 px-8 py-6 space-y-10 max-w-4xl">
 
         {/* ── WoW Installations ── */}
         <Section title="WoW Installations">
@@ -224,7 +224,7 @@ export default function Settings() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="font-semibold text-gray-200 text-sm mb-3 pb-2 border-b border-gray-800">
+      <h3 className="font-semibold text-gray-200 text-base mb-4 pb-3 border-b border-gray-800">
         {title}
       </h3>
       {children}
@@ -268,7 +268,7 @@ function InstallationCard({
   }
 
   return (
-    <div className={`card px-4 py-3 flex items-center gap-3
+    <div className={`card px-5 py-4 flex items-center gap-4
       ${isActive ? 'border-wow-gold/40' : ''}`}>
       <span className="text-xl">{FLAVOR_ICONS[installation.flavor] ?? '🎮'}</span>
       <div className="flex-1 min-w-0">

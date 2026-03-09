@@ -221,7 +221,7 @@ export default function Browse() {
   return (
     <div className="flex flex-col h-full page-enter">
       {/* Search bar */}
-      <div className="px-5 py-3 border-b border-gray-800 shrink-0 space-y-3">
+      <div className="px-6 py-4 border-b border-gray-800 shrink-0 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {mode !== 'home' && (
@@ -257,7 +257,7 @@ export default function Browse() {
           )}
         </div>
 
-        <form onSubmit={handleSearch} className="flex gap-2">
+        <form onSubmit={handleSearch} className="flex gap-3">
           <input
             ref={inputRef}
             className="input flex-1"
@@ -302,7 +302,7 @@ export default function Browse() {
         )}
 
         {/* GitHub lookup */}
-        <form onSubmit={handleGitHubLookup} className="flex gap-2">
+        <form onSubmit={handleGitHubLookup} className="flex gap-3">
           <input
             className="input flex-1 text-xs"
             placeholder="GitHub repo: owner/repo or full URL"
@@ -316,7 +316,7 @@ export default function Browse() {
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
         {mode === 'home' ? (
           /* ── Category Grid ─────────────────────────────────────────── */
           <div>
@@ -344,14 +344,14 @@ export default function Browse() {
                 }
               />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {categories.map(cat => (
                   <button
                     key={cat.id}
-                    className="card p-3 text-left hover:border-wow-gold/50 hover:bg-wow-dark-2/80 transition-all group cursor-pointer"
+                    className="card p-4 text-left hover:border-wow-gold/50 hover:bg-wow-dark-2/80 transition-all group cursor-pointer"
                     onClick={() => handleCategoryClick(cat)}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {cat.iconUrl ? (
                         <img
                           src={cat.iconUrl}

@@ -74,14 +74,14 @@ export default function AddonRow({ addon: initialAddon }: Props) {
 
   return (
     <div
-      className={`card px-4 py-3 cursor-pointer transition-all
+      className={`card px-5 py-4 cursor-pointer transition-all
                   ${expanded ? 'border-gray-700' : 'hover:border-gray-700'}`}
       onClick={() => { setExpanded(e => !e); setConfirming(false) }}
     >
       {/* Main row */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {/* Thumbnail / placeholder */}
-        <div className="w-10 h-10 rounded-lg bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center text-xl">
+        <div className="w-12 h-12 rounded-lg bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center text-2xl">
           {addon.thumbnailUrl
             ? <img src={addon.thumbnailUrl} alt="" className="w-full h-full object-cover" />
             : '🧩'}
@@ -104,7 +104,7 @@ export default function AddonRow({ addon: initialAddon }: Props) {
               {PROVIDER_LABEL[addon.provider]}
             </span>
           </div>
-          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
             <span>v{addon.version}</span>
             {addon.author && <span>by {addon.author}</span>}
             {addon.updateAvailable && addon.latestVersion && (
@@ -114,7 +114,7 @@ export default function AddonRow({ addon: initialAddon }: Props) {
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2 no-drag shrink-0" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3 no-drag shrink-0" onClick={e => e.stopPropagation()}>
           {addon.updateAvailable && !addon.isIgnored && !addon.pinnedVersion && (
             <button className="btn-success text-xs py-1 px-3" onClick={handleUpdate}>
               Update
@@ -143,12 +143,12 @@ export default function AddonRow({ addon: initialAddon }: Props) {
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-gray-800 space-y-3">
+        <div className="mt-4 pt-4 border-t border-gray-800 space-y-4">
           {addon.notes && (
             <p className="text-gray-400 text-xs leading-relaxed">{addon.notes}</p>
           )}
 
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
             <Detail label="Version" value={`v${addon.version}`} />
             {addon.latestVersion && normalizeVersion(addon.latestVersion) !== normalizeVersion(addon.version) && (
               <Detail label="Latest" value={`v${normalizeVersion(addon.latestVersion)}`} className="text-amber-400" />
@@ -168,7 +168,7 @@ export default function AddonRow({ addon: initialAddon }: Props) {
             </div>
           )}
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-3 flex-wrap">
             {addon.provider !== 'unknown' && (
               <button
                 className="btn-ghost text-xs py-1 px-3 text-blue-400"

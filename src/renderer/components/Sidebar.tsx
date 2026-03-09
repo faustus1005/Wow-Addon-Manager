@@ -21,22 +21,22 @@ export default function Sidebar() {
   const activeInstall = installations.find(i => i.id === activeInstallationId)
 
   return (
-    <aside className="w-52 shrink-0 flex flex-col bg-wow-dark-2 border-r border-gray-800 h-full">
+    <aside className="w-60 shrink-0 flex flex-col bg-wow-dark-2 border-r border-gray-800 h-full">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-gray-800">
-        <h1 className="text-wow-gold font-bold text-base leading-tight">WoW Addon<br/>Manager</h1>
-        <p className="text-gray-500 text-xs mt-1">v1.0.0</p>
+      <div className="px-5 py-6 border-b border-gray-800">
+        <h1 className="text-wow-gold font-bold text-lg leading-tight">WoW Addon<br/>Manager</h1>
+        <p className="text-gray-500 text-xs mt-1.5">v1.0.0</p>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-4 space-y-1.5">
         {navItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+              `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
                ${isActive
                  ? 'bg-wow-gold/20 text-wow-gold'
                  : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/50'}`
@@ -53,7 +53,7 @@ export default function Sidebar() {
 
       {/* WoW Installation Selector */}
       {installations.length > 0 && (
-        <div className="p-3 border-t border-gray-800">
+        <div className="p-4 border-t border-gray-800">
           <p className="section-header">Installation</p>
           <select
             value={activeInstallationId ?? ''}
@@ -74,7 +74,7 @@ export default function Sidebar() {
 
       {/* Status bar */}
       {(isScanning || isCheckingUpdates) && (
-        <div className="px-4 py-2 text-xs text-wow-gold animate-pulse border-t border-gray-800">
+        <div className="px-5 py-3 text-xs text-wow-gold animate-pulse border-t border-gray-800">
           {isScanning ? '⟳ Scanning addons…' : '⟳ Checking updates…'}
         </div>
       )}

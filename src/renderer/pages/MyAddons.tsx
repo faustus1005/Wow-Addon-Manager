@@ -56,8 +56,8 @@ export default function MyAddons() {
   return (
     <div className="flex flex-col h-full page-enter">
       {/* Header toolbar */}
-      <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-800 shrink-0">
-        <h2 className="text-sm font-semibold text-gray-200 w-28 shrink-0">My Addons</h2>
+      <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-800 shrink-0">
+        <h2 className="text-base font-semibold text-gray-200 w-32 shrink-0">My Addons</h2>
 
         {/* Search */}
         <input
@@ -119,7 +119,7 @@ export default function MyAddons() {
       </div>
 
       {/* Stats bar */}
-      <div className="flex items-center gap-4 px-5 py-2 border-b border-gray-800/50 shrink-0 text-xs text-gray-500">
+      <div className="flex items-center gap-5 px-6 py-2.5 border-b border-gray-800/50 shrink-0 text-xs text-gray-500">
         <span>{installedAddons.length} addon{installedAddons.length !== 1 ? 's' : ''} installed</span>
         {updateCount > 0 && (
           <span className="text-amber-400">{updateCount} update{updateCount !== 1 ? 's' : ''} available</span>
@@ -130,7 +130,7 @@ export default function MyAddons() {
       </div>
 
       {/* Addon list */}
-      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
         {isScanning && installedAddons.length === 0 ? (
           <div className="flex justify-center pt-20">
             <LoadingSpinner message="Scanning AddOns directory…" />

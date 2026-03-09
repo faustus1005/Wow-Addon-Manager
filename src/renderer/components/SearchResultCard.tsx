@@ -55,9 +55,9 @@ export default function SearchResultCard({ result, installedAddons }: Props) {
   }
 
   return (
-    <div className="card p-4 flex gap-4 hover:border-gray-700 transition-colors">
+    <div className="card p-5 flex gap-5 hover:border-gray-700 transition-colors">
       {/* Thumbnail */}
-      <div className="w-16 h-16 rounded-lg bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center text-3xl">
+      <div className="w-18 h-18 rounded-lg bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center text-3xl" style={{ width: '4.5rem', height: '4.5rem' }}>
         {result.thumbnailUrl
           ? <img src={result.thumbnailUrl} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
           : '🧩'}
@@ -108,11 +108,11 @@ export default function SearchResultCard({ result, installedAddons }: Props) {
         </div>
 
         {result.summary && (
-          <p className="text-gray-400 text-xs mt-2 line-clamp-2">{result.summary}</p>
+          <p className="text-gray-400 text-sm mt-2 line-clamp-2 leading-relaxed">{result.summary}</p>
         )}
 
         {result.categories && result.categories.length > 0 && (
-          <div className="flex gap-1 mt-2 flex-wrap">
+          <div className="flex gap-1.5 mt-3 flex-wrap">
             {result.categories.slice(0, 4).map(cat => (
               <span key={cat} className="badge bg-gray-800 text-gray-400 text-xs">{cat}</span>
             ))}
