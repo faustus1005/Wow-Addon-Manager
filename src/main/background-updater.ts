@@ -58,7 +58,7 @@ export async function runBackgroundUpdateCheck(win: BrowserWindow | null): Promi
           addon.downloadUrl   = info.downloadUrl
           addon.updateAvailable = hasUpdate
 
-          if (hasUpdate && addon.autoUpdate && info.downloadUrl) {
+          if (hasUpdate && addon.autoUpdate && !addon.pinnedVersion && info.downloadUrl) {
             const result: AddonSearchResult = {
               externalId:    addon.sourceId ?? addon.id,
               provider:      addon.provider,

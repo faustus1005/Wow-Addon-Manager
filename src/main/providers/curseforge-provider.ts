@@ -13,7 +13,7 @@
  * WoW game ID: 1 (all flavors). gameVersionTypeId is used for expansion-specific filtering.
  */
 import axios, { AxiosInstance } from 'axios'
-import { AddonSearchResult, AddonCategory, InstalledAddon, ReleaseChannel, WowFlavor, BrowseSortField } from '../../shared/types'
+import { AddonSearchResult, AddonCategory, AddonVersionInfo, InstalledAddon, ReleaseChannel, WowFlavor, BrowseSortField } from '../../shared/types'
 import { BaseProvider, UpdateInfo } from './base-provider'
 
 const CF_BASE = 'https://api.curseforge.com/v1'
@@ -257,6 +257,44 @@ export class CurseForgeProvider extends BaseProvider {
       }
     } catch {
       return null
+    }
+  }
+
+  private cfReleaseType(type: number): ReleaseChannel {
+    if (type === 3) return 'alpha'
+    if (type === 2) return 'beta'
+    return 'stable'
+  }
+
+  async getVersions(sourceId: string, channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+    if (!this.apiKey || !sourceId) return []
+    try {
+      const allowedTypes = CHANNEL_TYPE[channel]
+      const res = await this.client.get<{ data: CFFile[] }>(
+        `/mods/${sourceId}/files`,
+        { params: { pageSize: 50 } }
+      )
+
+      const files = (res.data.data ?? [])
+        .filter(f => allowedTypes.includes(f.releaseType))
+        .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())
+
+      const versions: AddonVersionInfo[] = []
+      for (const f of files) {
+        const downloadUrl = await this.resolveDownloadUrl(sourceId, f)
+        if (!downloadUrl) continue
+        versions.push({
+          version: f.displayName || f.fileName,
+          displayName: f.displayName || f.fileName,
+          downloadUrl,
+          releaseDate: f.fileDate,
+          releaseType: this.cfReleaseType(f.releaseType),
+          gameVersions: f.gameVersions,
+        })
+      }
+      return versions
+    } catch {
+      return []
     }
   }
 }

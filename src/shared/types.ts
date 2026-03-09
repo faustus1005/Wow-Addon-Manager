@@ -49,6 +49,38 @@ export interface InstalledAddon {
   thumbnailUrl?: string
   autoUpdate: boolean
   isIgnored: boolean
+  /** When set, the addon is locked to this specific version and won't auto-update */
+  pinnedVersion?: string
+  /** Download URL for the pinned version (stored at pin time) */
+  pinnedDownloadUrl?: string
+}
+
+// ─── Version Info (for version picker) ──────────────────────────────────────
+
+export interface AddonVersionInfo {
+  version: string
+  displayName: string
+  downloadUrl: string
+  releaseDate?: string
+  releaseType: ReleaseChannel
+  gameVersions?: string[]
+}
+
+export interface GetVersionsPayload {
+  addonId: string
+  installationId: string
+}
+
+export interface PinVersionPayload {
+  addonId: string
+  installationId: string
+  version: string
+  downloadUrl: string
+}
+
+export interface UnpinVersionPayload {
+  addonId: string
+  installationId: string
 }
 
 // ─── Search / Browse Results ────────────────────────────────────────────────

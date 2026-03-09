@@ -3,6 +3,8 @@ import { InstalledAddon } from '../types'
 import { normalizeVersion } from '../../shared/types'
 import { useApp } from '../context/AppContext'
 import LinkAddonDialog from './LinkAddonDialog'
+import VersionPickerDialog from './VersionPickerDialog'
+import toast from 'react-hot-toast'
 
 interface Props {
   addon: InstalledAddon
@@ -36,11 +38,16 @@ function timeAgo(ts: number): string {
   return `${Math.floor(months / 12)}y ago`
 }
 
-export default function AddonRow({ addon }: Props) {
+export default function AddonRow({ addon: initialAddon }: Props) {
   const { updateAddon, uninstallAddon, installations, activeInstallationId } = useApp()
+  const [addon, setAddon] = useState(initialAddon)
   const [expanded, setExpanded] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false)
+
+  // Keep in sync with parent prop
+  React.useEffect(() => { setAddon(initialAddon) }, [initialAddon])
 
   const handleUpdate = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -84,6 +91,9 @@ export default function AddonRow({ addon }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm text-gray-100 truncate">{addon.name}</span>
+            {addon.pinnedVersion && (
+              <span className="badge bg-amber-700 text-amber-200">Pinned v{normalizeVersion(addon.pinnedVersion)}</span>
+            )}
             {addon.updateAvailable && !addon.isIgnored && (
               <span className="badge-update">Update</span>
             )}
@@ -105,10 +115,15 @@ export default function AddonRow({ addon }: Props) {
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 no-drag shrink-0" onClick={e => e.stopPropagation()}>
-          {addon.updateAvailable && !addon.isIgnored && (
+          {addon.updateAvailable && !addon.isIgnored && !addon.pinnedVersion && (
             <button className="btn-success text-xs py-1 px-3" onClick={handleUpdate}>
               Update
             </button>
+          )}
+          {addon.updateAvailable && addon.pinnedVersion && (
+            <span className="text-amber-400 text-xs" title="Update available but version is pinned">
+              New version available
+            </span>
           )}
           {addon.websiteUrl && (
             <button className="btn-ghost text-xs py-1 px-2" onClick={openWebsite} title="Open website">
@@ -145,8 +160,28 @@ export default function AddonRow({ addon }: Props) {
             <Detail label="Directories" value={addon.directories.join(', ')} />
           </div>
 
+          {addon.pinnedVersion && addon.updateAvailable && addon.latestVersion && (
+            <div className="text-xs bg-amber-400/10 border border-amber-400/20 rounded px-3 py-1.5 text-amber-300">
+              Version pinned to v{normalizeVersion(addon.pinnedVersion)}.
+              {' '}Latest available: v{normalizeVersion(addon.latestVersion)}.
+              {' '}Unpin to allow updates.
+            </div>
+          )}
+
           <div className="flex gap-2 flex-wrap">
-            <AutoUpdateToggle addon={addon} />
+            {addon.provider !== 'unknown' && (
+              <button
+                className="btn-ghost text-xs py-1 px-3 text-blue-400"
+                onClick={e => { e.stopPropagation(); setVersionDialogOpen(true) }}
+                title="Choose a specific version to install and pin"
+              >
+                ⊞ Choose Version
+              </button>
+            )}
+            {addon.pinnedVersion && (
+              <UnpinButton addon={addon} onUnpinned={setAddon} />
+            )}
+            {!addon.pinnedVersion && <AutoUpdateToggle addon={addon} />}
             <IgnoreToggle addon={addon} />
             <button
               className={`btn-ghost text-xs py-1 px-3 ${addon.provider === 'unknown' ? 'text-blue-400' : 'text-gray-500'}`}
@@ -176,6 +211,14 @@ export default function AddonRow({ addon }: Props) {
         <LinkAddonDialog
           addon={addon}
           onClose={() => setLinkDialogOpen(false)}
+        />
+      )}
+
+      {versionDialogOpen && (
+        <VersionPickerDialog
+          addon={addon}
+          onClose={() => setVersionDialogOpen(false)}
+          onPinned={(updated) => setAddon(updated)}
         />
       )}
     </div>
@@ -221,6 +264,33 @@ function IgnoreToggle({ addon }: { addon: InstalledAddon }) {
       onClick={toggle}
     >
       {addon.isIgnored ? '⊘ Ignored' : '○ Ignore'}
+    </button>
+  )
+}
+
+function UnpinButton({ addon, onUnpinned }: { addon: InstalledAddon; onUnpinned: (a: InstalledAddon) => void }) {
+  const { activeInstallationId } = useApp()
+  const handleUnpin = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!activeInstallationId) return
+    try {
+      const updated = await window.api.unpinVersion({
+        addonId: addon.id,
+        installationId: activeInstallationId,
+      })
+      onUnpinned(updated)
+      toast.success(`${addon.name} unpinned — normal updates resumed`)
+    } catch (err: any) {
+      toast.error(`Unpin failed: ${err.message}`)
+    }
+  }
+  return (
+    <button
+      className="btn-ghost text-xs py-1 px-3 text-amber-400"
+      onClick={handleUnpin}
+      title="Remove version pin and resume normal updates"
+    >
+      ⊘ Unpin Version
     </button>
   )
 }
