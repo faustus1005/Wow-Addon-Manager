@@ -242,6 +242,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.settings, state.activeInstallationId, patchSettings, api])
 
+  // ── Window title with update count ──────────────────────────────────────
+
+  useEffect(() => {
+    const base = 'WoW Addon Manager'
+    const title = state.updateCount > 0
+      ? `${base} (${state.updateCount} update${state.updateCount !== 1 ? 's' : ''})`
+      : base
+    window.api.setWindowTitle(title)
+  }, [state.updateCount])
+
   // ── Bootstrap ──────────────────────────────────────────────────────────
 
   useEffect(() => {

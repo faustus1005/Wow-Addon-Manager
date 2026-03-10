@@ -197,6 +197,32 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
 }
 
+// ─── Export / Import ──────────────────────────────────────────────────────
+
+export interface ExportedAddonList {
+  version: 1
+  exportedAt: string
+  installationName: string
+  flavor: WowFlavor
+  addons: ExportedAddon[]
+}
+
+export interface ExportedAddon {
+  name: string
+  provider: AddonProvider
+  sourceId?: string
+  version: string
+  channelPreference: ReleaseChannel
+  autoUpdate: boolean
+  pinnedVersion?: string
+}
+
+export interface SetChannelPayload {
+  addonId: string
+  installationId: string
+  channel: ReleaseChannel
+}
+
 // ─── Version utilities ─────────────────────────────────────────────────────
 
 /**

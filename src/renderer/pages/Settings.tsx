@@ -198,12 +198,72 @@ export default function Settings() {
 
         {/* ── Data ── */}
         <Section title="Data">
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               className="btn-secondary text-sm"
               onClick={scanAddons}
             >
               ⟳ Rescan AddOns Directory
+            </button>
+            <button
+              className="btn-secondary text-sm"
+              onClick={async () => {
+                if (!activeInstallationId) { toast.error('No active installation'); return }
+                try {
+                  const result = await window.api.exportAddonList(activeInstallationId)
+                  if (result) toast.success(`Exported ${result.count} addons`)
+                } catch (err: any) {
+                  toast.error(`Export failed: ${err.message}`)
+                }
+              }}
+              disabled={!activeInstallationId}
+            >
+              ↓ Export Addon List
+            </button>
+            <button
+              className="btn-secondary text-sm"
+              onClick={async () => {
+                if (!activeInstallationId) { toast.error('No active installation'); return }
+                try {
+                  const data = await window.api.importAddonList(activeInstallationId)
+                  if (!data) return
+                  const tracked = data.addons.filter(a => a.sourceId)
+                  toast.success(
+                    `Loaded ${tracked.length} addon(s) from "${data.installationName}" (${data.flavor}). ` +
+                    `Use Browse to reinstall them from their original sources.`
+                  , { duration: 8000 })
+                  // Re-install all tracked addons
+                  let installed = 0
+                  for (const addon of tracked) {
+                    try {
+                      const results = await window.api.searchAddons({
+                        query: addon.name,
+                        provider: addon.provider === 'unknown' ? undefined : addon.provider,
+                      })
+                      const match = results.find(r =>
+                        r.externalId === addon.sourceId && r.provider === addon.provider
+                      ) ?? results.find(r =>
+                        r.provider === addon.provider && r.name.toLowerCase() === addon.name.toLowerCase()
+                      )
+                      if (match) {
+                        await window.api.installAddon({
+                          result: match,
+                          installationId: activeInstallationId,
+                          channel: addon.channelPreference,
+                        })
+                        installed++
+                      }
+                    } catch { /* skip individual failures */ }
+                  }
+                  toast.success(`Installed ${installed} of ${tracked.length} addons`)
+                  scanAddons()
+                } catch (err: any) {
+                  toast.error(`Import failed: ${err.message}`)
+                }
+              }}
+              disabled={!activeInstallationId}
+            >
+              ↑ Import Addon List
             </button>
             <button
               className="btn-ghost text-sm"
