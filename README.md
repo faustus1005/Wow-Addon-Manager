@@ -1,5 +1,5 @@
 <img width="1024" height="1024" alt="WoWAddonManagerLogo" src="https://github.com/user-attachments/assets/28fb62ed-f561-42a4-a458-5589c5321867" />
-A **Windows 64-bit** desktop application for managing World of Warcraft addons, built with Electron + React + TypeScript.
+A Windows desktop application for managing World of Warcraft addons.
 
 ## Features
 
