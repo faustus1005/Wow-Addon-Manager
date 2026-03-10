@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { InstalledAddon } from '../types'
-import { normalizeVersion } from '../../shared/types'
+import { normalizeVersion, ReleaseChannel } from '../../shared/types'
 import { useApp } from '../context/AppContext'
 import LinkAddonDialog from './LinkAddonDialog'
 import VersionPickerDialog from './VersionPickerDialog'
@@ -182,6 +182,9 @@ export default function AddonRow({ addon: initialAddon }: Props) {
               <UnpinButton addon={addon} onUnpinned={setAddon} />
             )}
             {!addon.pinnedVersion && <AutoUpdateToggle addon={addon} />}
+            {addon.provider !== 'unknown' && (
+              <ChannelSelector addon={addon} onChanged={setAddon} />
+            )}
             <IgnoreToggle addon={addon} />
             <button
               className={`btn-ghost text-xs py-1 px-3 ${addon.provider === 'unknown' ? 'text-blue-400' : 'text-gray-500'}`}
@@ -265,6 +268,42 @@ function IgnoreToggle({ addon }: { addon: InstalledAddon }) {
     >
       {addon.isIgnored ? '⊘ Ignored' : '○ Ignore'}
     </button>
+  )
+}
+
+function ChannelSelector({ addon, onChanged }: { addon: InstalledAddon; onChanged: (a: InstalledAddon) => void }) {
+  const { activeInstallationId } = useApp()
+  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation()
+    if (!activeInstallationId) return
+    try {
+      const updated = await window.api.setChannel({
+        addonId: addon.id,
+        installationId: activeInstallationId,
+        channel: e.target.value as ReleaseChannel,
+      })
+      onChanged(updated)
+      toast.success(`${addon.name} set to ${e.target.value} channel`)
+    } catch (err: any) {
+      toast.error(`Failed to set channel: ${err.message}`)
+    }
+  }
+  return (
+    <label
+      className="flex items-center gap-2 text-xs text-gray-400"
+      onClick={e => e.stopPropagation()}
+    >
+      <span>Channel:</span>
+      <select
+        className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-xs text-gray-300 focus:border-wow-gold outline-none"
+        value={addon.channelPreference}
+        onChange={handleChange}
+      >
+        <option value="stable">Stable</option>
+        <option value="beta">Beta</option>
+        <option value="alpha">Alpha</option>
+      </select>
+    </label>
   )
 }
 
