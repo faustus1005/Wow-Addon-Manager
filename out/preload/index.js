@@ -31,6 +31,13 @@ const api = {
   getAddonVersions: (payload) => electron.ipcRenderer.invoke("addon:get-versions", payload),
   pinVersion: (payload) => electron.ipcRenderer.invoke("addon:pin-version", payload),
   unpinVersion: (payload) => electron.ipcRenderer.invoke("addon:unpin-version", payload),
+  // Per-addon release channel
+  setChannel: (payload) => electron.ipcRenderer.invoke("addon:set-channel", payload),
+  // Export / Import
+  exportAddonList: (installationId) => electron.ipcRenderer.invoke("addon:export", installationId),
+  importAddonList: (installationId) => electron.ipcRenderer.invoke("addon:import", installationId),
+  // Window
+  setWindowTitle: (title) => electron.ipcRenderer.invoke("window:set-title", title),
   // Shell
   openUrl: (url) => electron.ipcRenderer.invoke("shell:open-url", url),
   openPath: (p) => electron.ipcRenderer.invoke("shell:open-path", p),

@@ -1,8 +1,8 @@
 "use strict";
 const electron = require("electron");
 const path = require("path");
-const child_process = require("child_process");
 const fs = require("fs");
+const child_process = require("child_process");
 const crypto = require("crypto");
 const https = require("https");
 const http = require("http");
@@ -1429,8 +1429,66 @@ function registerIpcHandlers(win) {
     saveInstalledAddons(installationId, addons);
     return addon;
   });
+  electron.ipcMain.handle("addon:set-channel", (_e, payload) => {
+    const { addonId, installationId, channel } = payload;
+    const addons = getInstalledAddons(installationId);
+    const addon = addons.find((a) => a.id === addonId);
+    if (!addon) return;
+    addon.channelPreference = channel;
+    saveInstalledAddons(installationId, addons);
+    return addon;
+  });
+  electron.ipcMain.handle("addon:export", async (_e, installationId) => {
+    const settings = getSettings();
+    const installation = settings.wowInstallations.find((i) => i.id === installationId);
+    if (!installation) throw new Error(`Installation not found: ${installationId}`);
+    const addons = getInstalledAddons(installationId);
+    const exportData = {
+      version: 1,
+      exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      installationName: installation.displayName,
+      flavor: installation.flavor,
+      addons: addons.filter((a) => a.provider !== "unknown").map((a) => ({
+        name: a.name,
+        provider: a.provider,
+        sourceId: a.sourceId,
+        version: a.version,
+        channelPreference: a.channelPreference,
+        autoUpdate: a.autoUpdate,
+        pinnedVersion: a.pinnedVersion
+      }))
+    };
+    const result = await electron.dialog.showSaveDialog(win, {
+      title: "Export Addon List",
+      defaultPath: `wow-addons-${installation.flavor}-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`,
+      filters: [{ name: "JSON Files", extensions: ["json"] }]
+    });
+    if (result.canceled || !result.filePath) return null;
+    fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2), "utf-8");
+    return { path: result.filePath, count: exportData.addons.length };
+  });
+  electron.ipcMain.handle("addon:import", async (_e, installationId) => {
+    const settings = getSettings();
+    const installation = settings.wowInstallations.find((i) => i.id === installationId);
+    if (!installation) throw new Error(`Installation not found: ${installationId}`);
+    const result = await electron.dialog.showOpenDialog(win, {
+      title: "Import Addon List",
+      filters: [{ name: "JSON Files", extensions: ["json"] }],
+      properties: ["openFile"]
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    const raw = fs.readFileSync(result.filePaths[0], "utf-8");
+    const data = JSON.parse(raw);
+    if (!data.version || !Array.isArray(data.addons)) {
+      throw new Error("Invalid addon list file format.");
+    }
+    return data;
+  });
   electron.ipcMain.handle("shell:open-url", (_e, url) => electron.shell.openExternal(url));
   electron.ipcMain.handle("shell:open-path", (_e, p) => electron.shell.openPath(p));
+  electron.ipcMain.handle("window:set-title", (_e, title) => {
+    win.setTitle(title);
+  });
   electron.ipcMain.handle("addon:update-all", async (_e, installationId) => {
     const settings = getSettings();
     const installation = settings.wowInstallations.find((i) => i.id === installationId);

@@ -18,7 +18,10 @@ import type {
   GetVersionsPayload,
   PinVersionPayload,
   UnpinVersionPayload,
+  SetChannelPayload,
+  ExportedAddonList,
   DownloadProgress,
+  ReleaseChannel,
 } from '../shared/types'
 
 // ─── Typed IPC wrapper ─────────────────────────────────────────────────────
@@ -83,6 +86,20 @@ const api = {
     ipcRenderer.invoke('addon:pin-version', payload),
   unpinVersion: (payload: UnpinVersionPayload): Promise<InstalledAddon> =>
     ipcRenderer.invoke('addon:unpin-version', payload),
+
+  // Per-addon release channel
+  setChannel: (payload: SetChannelPayload): Promise<InstalledAddon> =>
+    ipcRenderer.invoke('addon:set-channel', payload),
+
+  // Export / Import
+  exportAddonList: (installationId: string): Promise<{ path: string; count: number } | null> =>
+    ipcRenderer.invoke('addon:export', installationId),
+  importAddonList: (installationId: string): Promise<ExportedAddonList | null> =>
+    ipcRenderer.invoke('addon:import', installationId),
+
+  // Window
+  setWindowTitle: (title: string): Promise<void> =>
+    ipcRenderer.invoke('window:set-title', title),
 
   // Shell
   openUrl: (url: string): Promise<void> =>
