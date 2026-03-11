@@ -15,7 +15,7 @@ import { BrowserWindow } from 'electron'
 
 export type ProgressCallback = (percent: number, bytesDownloaded: number, totalBytes: number) => void
 
-const TMP_DIR = path.join(process.env.TEMP ?? '/tmp', 'wow-addon-manager')
+const TMP_DIR = path.join(process.env.TEMP ?? '/tmp', 'wow-warden')
 
 function ensureTmpDir() {
   if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true })
@@ -35,7 +35,7 @@ async function downloadFile(
       if (redirectCount > 10) { reject(new Error('Too many redirects')); return }
 
       const protocol = reqUrl.startsWith('https') ? https : http
-      const opts = { headers: { 'User-Agent': 'WoWAddonManager/1.0', ...headers } }
+      const opts = { headers: { 'User-Agent': 'WoWWarden/1.0', ...headers } }
 
       protocol.get(reqUrl, opts, res => {
         // Handle redirects

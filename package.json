@@ -1,9 +1,9 @@
 {
-  "name": "wow-addon-manager",
+  "name": "wow-warden",
   "version": "1.0.0",
-  "description": "World of Warcraft Addon Manager - search, install, and update WoW addons",
+  "description": "WoW Warden - search, install, and update WoW addons",
   "main": "out/main/index.js",
-  "author": "WoW Addon Manager",
+  "author": "WoW Warden",
   "license": "MIT",
   "repository": {
     "type": "git",

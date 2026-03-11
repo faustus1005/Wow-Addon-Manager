@@ -5,16 +5,16 @@ module.exports = {
     extend: {
       colors: {
         wow: {
-          gold: '#ffd100',
-          'gold-dark': '#c9a227',
-          dark: '#1a1a2e',
-          'dark-2': '#16213e',
-          'dark-3': '#0f3460',
-          accent: '#533483',
+          gold: '#e8a525',
+          'gold-dark': '#b87d1a',
+          dark: '#1a120a',
+          'dark-2': '#241a10',
+          'dark-3': '#3d2814',
+          accent: '#c45e20',
           success: '#4caf50',
-          warning: '#ff9800',
-          error: '#f44336',
-          blue: '#00b4d8',
+          warning: '#e88a30',
+          error: '#c43030',
+          blue: '#3ba4d8',
         }
       },
       fontFamily: {

@@ -34,7 +34,7 @@ function createWindow(startHidden = false) {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#1a120a',
     titleBarStyle: 'hiddenInset',
     frame: process.platform !== 'darwin',
     show: false,
@@ -88,7 +88,7 @@ function createTray() {
   }
 
   tray = new Tray(trayIcon)
-  tray.setToolTip('WoW Addon Manager')
+  tray.setToolTip('WoW Warden')
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Open',  click: () => { mainWindow?.show(); mainWindow?.focus() } },

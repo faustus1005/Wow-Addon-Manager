@@ -98,7 +98,7 @@ export async function runBackgroundUpdateCheck(win: BrowserWindow | null): Promi
     if (totalAutoUpdated > 0)    parts.push(`${totalAutoUpdated} addon${totalAutoUpdated > 1 ? 's' : ''} auto-updated`)
     if (totalPendingUpdates > 0) parts.push(`${totalPendingUpdates} update${totalPendingUpdates > 1 ? 's' : ''} available`)
     new Notification({
-      title: 'WoW Addon Manager',
+      title: 'WoW Warden',
       body:  parts.join(' · '),
     }).show()
   }

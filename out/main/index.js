@@ -472,7 +472,7 @@ function scanAddons(installation) {
   }
   return result.sort((a, b) => a.name.localeCompare(b.name));
 }
-const TMP_DIR = path.join(process.env.TEMP ?? "/tmp", "wow-addon-manager");
+const TMP_DIR = path.join(process.env.TEMP ?? "/tmp", "wow-warden");
 function ensureTmpDir() {
   if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 }
@@ -486,7 +486,7 @@ async function downloadFile(url, onProgress, headers) {
         return;
       }
       const protocol = reqUrl.startsWith("https") ? https : http;
-      const opts = { headers: { "User-Agent": "WoWAddonManager/1.0", ...headers } };
+      const opts = { headers: { "User-Agent": "WoWWarden/1.0", ...headers } };
       protocol.get(reqUrl, opts, (res) => {
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           res.resume();
@@ -628,7 +628,7 @@ class WagoProvider extends BaseProvider {
       baseURL: WAGO_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         "Accept": "application/json",
         ...apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
       }
@@ -775,7 +775,7 @@ class CurseForgeProvider extends BaseProvider {
       baseURL: CF_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         "Accept": "application/json",
         "x-api-key": apiKey
       }
@@ -940,7 +940,7 @@ class WoWInterfaceProvider extends BaseProvider {
       baseURL: WOWI_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         Accept: "application/json"
       }
     });
@@ -1046,7 +1046,7 @@ class GitHubProvider extends BaseProvider {
       baseURL: GH_BASE,
       timeout: 15e3,
       headers: {
-        "User-Agent": "WoWAddonManager/1.0",
+        "User-Agent": "WoWWarden/1.0",
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
         ...token ? { Authorization: `Bearer ${token}` } : {}
@@ -1596,7 +1596,7 @@ async function runBackgroundUpdateCheck(win) {
     if (totalAutoUpdated > 0) parts.push(`${totalAutoUpdated} addon${totalAutoUpdated > 1 ? "s" : ""} auto-updated`);
     if (totalPendingUpdates > 0) parts.push(`${totalPendingUpdates} update${totalPendingUpdates > 1 ? "s" : ""} available`);
     new electron.Notification({
-      title: "WoW Addon Manager",
+      title: "WoW Warden",
       body: parts.join(" · ")
     }).show();
   }
@@ -1618,7 +1618,7 @@ function createWindow(startHidden = false) {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#1a120a",
     titleBarStyle: "hiddenInset",
     frame: process.platform !== "darwin",
     show: false,
@@ -1660,7 +1660,7 @@ function createTray() {
     trayIcon = electron.nativeImage.createEmpty();
   }
   tray = new electron.Tray(trayIcon);
-  tray.setToolTip("WoW Addon Manager");
+  tray.setToolTip("WoW Warden");
   tray.setContextMenu(
     electron.Menu.buildFromTemplate([
       { label: "Open", click: () => {

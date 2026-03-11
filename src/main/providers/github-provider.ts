@@ -50,7 +50,7 @@ export class GitHubProvider extends BaseProvider {
       baseURL: GH_BASE,
       timeout: 15000,
       headers: {
-        'User-Agent': 'WoWAddonManager/1.0',
+        'User-Agent': 'WoWWarden/1.0',
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

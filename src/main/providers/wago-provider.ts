@@ -66,7 +66,7 @@ export class WagoProvider extends BaseProvider {
       baseURL: WAGO_BASE,
       timeout: 15000,
       headers: {
-        'User-Agent': 'WoWAddonManager/1.0',
+        'User-Agent': 'WoWWarden/1.0',
         'Accept': 'application/json',
         ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       },

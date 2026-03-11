@@ -16,8 +16,8 @@
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-gray-600 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-500; }
+  ::-webkit-scrollbar-thumb { @apply bg-amber-900 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-amber-800; }
 }
 
 @layer components {
@@ -48,11 +48,11 @@
   }
 
   .card {
-    @apply bg-wow-dark-2 rounded-xl border border-gray-800;
+    @apply bg-wow-dark-2 rounded-xl border border-amber-900/30;
   }
 
   .input {
-    @apply bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100
+    @apply bg-amber-950/40 border border-amber-900/40 rounded-lg px-3 py-2 text-sm text-gray-100
            placeholder-gray-500 focus:outline-none focus:border-wow-gold transition-colors;
   }
 

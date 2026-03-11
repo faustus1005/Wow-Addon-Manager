@@ -21,10 +21,10 @@ export default function Sidebar() {
   const activeInstall = installations.find(i => i.id === activeInstallationId)
 
   return (
-    <aside className="w-52 shrink-0 flex flex-col bg-wow-dark-2 border-r border-gray-800 h-full">
+    <aside className="w-52 shrink-0 flex flex-col bg-wow-dark-2 border-r border-amber-900/30 h-full">
       {/* Logo */}
-      <div className="px-4 py-5 border-b border-gray-800">
-        <h1 className="text-wow-gold font-bold text-base leading-tight">WoW Addon<br/>Manager</h1>
+      <div className="px-4 py-5 border-b border-amber-900/30">
+        <h1 className="text-wow-gold font-bold text-base leading-tight">WoW<br/>Warden</h1>
         <p className="text-gray-500 text-xs mt-1">v1.0.0</p>
       </div>
 
@@ -53,7 +53,7 @@ export default function Sidebar() {
 
       {/* WoW Installation Selector */}
       {installations.length > 0 && (
-        <div className="p-3 border-t border-gray-800">
+        <div className="p-3 border-t border-amber-900/30">
           <p className="section-header">Installation</p>
           <select
             value={activeInstallationId ?? ''}
@@ -74,7 +74,7 @@ export default function Sidebar() {
 
       {/* Status bar */}
       {(isScanning || isCheckingUpdates) && (
-        <div className="px-4 py-2 text-xs text-wow-gold animate-pulse border-t border-gray-800">
+        <div className="px-4 py-2 text-xs text-wow-gold animate-pulse border-t border-amber-900/30">
           {isScanning ? '⟳ Scanning addons…' : '⟳ Checking updates…'}
         </div>
       )}

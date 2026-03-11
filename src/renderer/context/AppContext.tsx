@@ -245,7 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ── Window title with update count ──────────────────────────────────────
 
   useEffect(() => {
-    const base = 'WoW Addon Manager'
+    const base = 'WoW Warden'
     const title = state.updateCount > 0
       ? `${base} (${state.updateCount} update${state.updateCount !== 1 ? 's' : ''})`
       : base
