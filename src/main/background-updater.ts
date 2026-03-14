@@ -46,10 +46,10 @@ export async function runBackgroundUpdateCheck(win: BrowserWindow | null): Promi
         let info = null
 
         switch (addon.provider) {
-          case 'wago':         info = await wago.checkUpdate(addon, channel);         break
-          case 'curseforge':   info = await curseforge.checkUpdate(addon, channel);   break
-          case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel); break
-          case 'github':       info = await github.checkUpdate(addon, channel);       break
+          case 'wago':         info = await wago.checkUpdate(addon, channel, installation.flavor);         break
+          case 'curseforge':   info = await curseforge.checkUpdate(addon, channel, installation.flavor);   break
+          case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel, installation.flavor); break
+          case 'github':       info = await github.checkUpdate(addon, channel, installation.flavor);       break
         }
 
         if (info) {

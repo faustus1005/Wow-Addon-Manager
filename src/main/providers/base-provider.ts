@@ -21,7 +21,8 @@ export abstract class BaseProvider {
   /** Resolve the latest file info for an installed addon */
   abstract checkUpdate(
     addon: InstalledAddon,
-    channel: ReleaseChannel
+    channel: ReleaseChannel,
+    flavor?: WowFlavor
   ): Promise<UpdateInfo | null>
 
   /** Fetch full details for a single result (optional, enriches thumbnails etc.) */
@@ -30,7 +31,7 @@ export abstract class BaseProvider {
   }
 
   /** Get available versions for an addon (for version picker). Override in subclasses. */
-  async getVersions(_sourceId: string, _channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+  async getVersions(_sourceId: string, _channel: ReleaseChannel, _flavor?: WowFlavor): Promise<AddonVersionInfo[]> {
     return []
   }
 }
