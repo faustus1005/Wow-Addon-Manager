@@ -8,7 +8,7 @@
  * (60 req/hr unauthenticated, 5000/hr with token).
  */
 import axios, { AxiosInstance } from 'axios'
-import { AddonSearchResult, AddonVersionInfo, InstalledAddon, ReleaseChannel } from '../../shared/types'
+import { AddonSearchResult, AddonVersionInfo, InstalledAddon, ReleaseChannel, WowFlavor } from '../../shared/types'
 import { BaseProvider, UpdateInfo } from './base-provider'
 
 const GH_BASE = 'https://api.github.com'
@@ -78,7 +78,7 @@ export class GitHubProvider extends BaseProvider {
   }
 
   /** Resolve a GitHub "owner/repo" sourceId to the latest release */
-  async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel): Promise<UpdateInfo | null> {
+  async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel, _flavor?: WowFlavor): Promise<UpdateInfo | null> {
     if (!addon.sourceId || !addon.sourceId.includes('/')) return null
     try {
       const res = await this.client.get<GHRelease[]>(

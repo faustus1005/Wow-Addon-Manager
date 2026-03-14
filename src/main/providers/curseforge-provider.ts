@@ -230,13 +230,14 @@ export class CurseForgeProvider extends BaseProvider {
     return (res.data.data ?? []).map(m => this.mapMod(m))
   }
 
-  async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel): Promise<UpdateInfo | null> {
+  async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel, flavor?: WowFlavor): Promise<UpdateInfo | null> {
     if (!this.apiKey || !addon.sourceId) return null
     try {
       const allowedTypes = CHANNEL_TYPE[channel]
+      const gameVersionTypeId = flavor ? GAME_VERSION_TYPE_MAP[flavor] : undefined
       const res = await this.client.get<{ data: CFFile[] }>(
         `/mods/${addon.sourceId}/files`,
-        { params: { pageSize: 10 } }
+        { params: { pageSize: 10, ...(gameVersionTypeId ? { gameVersionTypeId } : {}) } }
       )
 
       const latestFile = res.data.data
@@ -266,13 +267,14 @@ export class CurseForgeProvider extends BaseProvider {
     return 'stable'
   }
 
-  async getVersions(sourceId: string, channel: ReleaseChannel): Promise<AddonVersionInfo[]> {
+  async getVersions(sourceId: string, channel: ReleaseChannel, flavor?: WowFlavor): Promise<AddonVersionInfo[]> {
     if (!this.apiKey || !sourceId) return []
     try {
       const allowedTypes = CHANNEL_TYPE[channel]
+      const gameVersionTypeId = flavor ? GAME_VERSION_TYPE_MAP[flavor] : undefined
       const res = await this.client.get<{ data: CFFile[] }>(
         `/mods/${sourceId}/files`,
-        { params: { pageSize: 50 } }
+        { params: { pageSize: 50, ...(gameVersionTypeId ? { gameVersionTypeId } : {}) } }
       )
 
       const files = (res.data.data ?? [])
