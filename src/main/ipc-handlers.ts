@@ -177,10 +177,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
 
       wago.setActiveFlavor(installation.flavor)
       switch (addon.provider) {
-        case 'wago':         info = await wago.checkUpdate(addon, channel);         break
-        case 'curseforge':   info = await curseforge.checkUpdate(addon, channel);   break
-        case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel); break
-        case 'github':       info = await github.checkUpdate(addon, channel);       break
+        case 'wago':         info = await wago.checkUpdate(addon, channel, installation.flavor);         break
+        case 'curseforge':   info = await curseforge.checkUpdate(addon, channel, installation.flavor);   break
+        case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel, installation.flavor); break
+        case 'github':       info = await github.checkUpdate(addon, channel, installation.flavor);       break
       }
 
       if (!info?.downloadUrl) {
@@ -228,10 +228,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
         let info = null
 
         switch (addon.provider) {
-          case 'wago':         info = await wago.checkUpdate(addon, channel);         break
-          case 'curseforge':   info = await curseforge.checkUpdate(addon, channel);   break
-          case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel); break
-          case 'github':       info = await github.checkUpdate(addon, channel);       break
+          case 'wago':         info = await wago.checkUpdate(addon, channel, installation.flavor);         break
+          case 'curseforge':   info = await curseforge.checkUpdate(addon, channel, installation.flavor);   break
+          case 'wowinterface': info = await wowinterface.checkUpdate(addon, channel, installation.flavor); break
+          case 'github':       info = await github.checkUpdate(addon, channel, installation.flavor);       break
         }
 
         if (info) {
@@ -332,12 +332,13 @@ export function registerIpcHandlers(win: BrowserWindow) {
     if (installation) wago.setActiveFlavor(installation.flavor)
 
     const channel = addon.channelPreference ?? settings.defaultChannel
+    const flavor = installation?.flavor
 
     switch (addon.provider) {
-      case 'curseforge':   return curseforge.getVersions(addon.sourceId, channel)
-      case 'github':       return github.getVersions(addon.sourceId, channel)
-      case 'wowinterface': return wowinterface.getVersions(addon.sourceId, channel)
-      case 'wago':         return wago.getVersions(addon.sourceId, channel)
+      case 'curseforge':   return curseforge.getVersions(addon.sourceId, channel, flavor)
+      case 'github':       return github.getVersions(addon.sourceId, channel, flavor)
+      case 'wowinterface': return wowinterface.getVersions(addon.sourceId, channel, flavor)
+      case 'wago':         return wago.getVersions(addon.sourceId, channel, flavor)
       default:             return []
     }
   })

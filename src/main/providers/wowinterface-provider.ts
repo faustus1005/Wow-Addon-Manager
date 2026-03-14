@@ -124,7 +124,7 @@ export class WoWInterfaceProvider extends BaseProvider {
     return matches.slice(start, start + pageSize).map(f => this.mapFile(f))
   }
 
-  async checkUpdate(addon: InstalledAddon, _channel: ReleaseChannel): Promise<UpdateInfo | null> {
+  async checkUpdate(addon: InstalledAddon, _channel: ReleaseChannel, _flavor?: WowFlavor): Promise<UpdateInfo | null> {
     if (!addon.sourceId) return null
     try {
       const res = await this.client.get<WowiDetails[]>(`/filedetails/${addon.sourceId}.json`)

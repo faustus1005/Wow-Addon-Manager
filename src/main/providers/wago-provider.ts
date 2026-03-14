@@ -126,7 +126,7 @@ export class WagoProvider extends BaseProvider {
     return []
   }
 
-  async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel): Promise<UpdateInfo | null> {
+  async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel, _flavor?: WowFlavor): Promise<UpdateInfo | null> {
     if (!addon.sourceId || !this.apiKey) return null
     try {
       const gameVersion = FLAVOR_MAP[this.activeFlavor] ?? 'retail'
