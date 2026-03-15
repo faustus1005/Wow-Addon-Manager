@@ -41,15 +41,13 @@ function isFileCompatibleWithFlavor(file: CFFile, flavor?: WowFlavor): boolean {
   if (!flavor || flavor !== 'retail') return true  // Only filter for Retail
   if (!file.gameVersions || file.gameVersions.length === 0) return true
 
-  // Check if ANY of the file's game versions are Retail-compatible.
+  // Check if ANY numeric game version is Retail-compatible.
   // Retail versions are currently 10.x, 11.x (and future major versions above 12).
   // Classic flavors use 1.x-5.x (Era/TBC/Wrath/Cata/MoP) and 12.x (MoP Classic interface).
-  const hasRetailVersion = file.gameVersions.some(v => {
-    // Skip non-version strings (e.g. "Retail", "Classic", flavor labels)
-    if (!/^\d/.test(v)) return true
-    return !CLASSIC_ONLY_MAJOR_VERSIONS.some(prefix => v.startsWith(prefix))
-  })
-  return hasRetailVersion
+  // Non-numeric labels (e.g. "Retail", "Classic") are ignored — only numeric versions decide.
+  const numericVersions = file.gameVersions.filter(v => /^\d/.test(v))
+  if (numericVersions.length === 0) return true  // No numeric versions to check, allow through
+  return numericVersions.some(v => !CLASSIC_ONLY_MAJOR_VERSIONS.some(prefix => v.startsWith(prefix)))
 }
 
 // CurseForge release type: 1=release, 2=beta, 3=alpha
