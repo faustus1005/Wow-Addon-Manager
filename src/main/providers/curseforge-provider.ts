@@ -198,10 +198,11 @@ export class CurseForgeProvider extends BaseProvider {
     }
   }
 
-  private mapMod(mod: CFMod, channel: ReleaseChannel = 'stable'): AddonSearchResult {
+  private mapMod(mod: CFMod, channel: ReleaseChannel = 'stable', flavor?: WowFlavor): AddonSearchResult {
     const allowedTypes = CHANNEL_TYPE[channel]
     const latestFile = (mod.latestFiles ?? [])
       .filter(f => allowedTypes.includes(f.releaseType))
+      .filter(f => isFileCompatibleWithFlavor(f, flavor))
       .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0]
 
     return {
@@ -247,7 +248,9 @@ export class CurseForgeProvider extends BaseProvider {
     }
 
     const res = await this.client.get<CFSearchResponse>('/mods/search', { params })
-    return (res.data.data ?? []).map(m => this.mapMod(m))
+    return (res.data.data ?? [])
+      .map(m => this.mapMod(m, 'stable', flavor))
+      .filter(m => m.latestVersion !== '0')  // Exclude mods with no compatible files
   }
 
   async checkUpdate(addon: InstalledAddon, channel: ReleaseChannel, flavor?: WowFlavor): Promise<UpdateInfo | null> {
