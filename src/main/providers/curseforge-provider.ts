@@ -21,13 +21,35 @@ const WOW_GAME_ID = 1  // All WoW flavors share game ID 1 on CurseForge
 
 // gameVersionTypeId values for each WoW flavour.
 // Source: CF2WowGameVersionType enum in the curseforge-v2 library.
-// Retail is omitted – searching without a gameVersionTypeId returns all retail files.
 const GAME_VERSION_TYPE_MAP: Partial<Record<WowFlavor, number>> = {
+  retail:            517,  // CF2WowGameVersionType.Retail
   classic_era:     67408,  // CF2WowGameVersionType.Classic
   burning_crusade: 73246,  // CF2WowGameVersionType.BurningCrusade
   wrath:           73713,  // CF2WowGameVersionType.WOTLK
   classic:         77522,  // CF2WowGameVersionType.Cata  (app's "classic" = Cata Classic)
   cataclysm:       77522,  // CF2WowGameVersionType.Cata
+}
+
+// Major interface version prefixes that belong to non-Retail Classic flavors.
+// Used as a client-side safety filter when the API's gameVersionTypeId filtering
+// lets through files for the wrong flavor (e.g. Pandaria Classic leaking into Retail).
+// CurseForge gameVersions use strings like "12.0.1" (MoP Classic) vs "11.0.7" (Retail).
+const CLASSIC_ONLY_MAJOR_VERSIONS = ['1.', '2.', '3.', '4.', '5.', '12.']
+
+/** Returns true if the file looks compatible with the requested flavor */
+function isFileCompatibleWithFlavor(file: CFFile, flavor?: WowFlavor): boolean {
+  if (!flavor || flavor !== 'retail') return true  // Only filter for Retail
+  if (!file.gameVersions || file.gameVersions.length === 0) return true
+
+  // Check if ANY of the file's game versions are Retail-compatible.
+  // Retail versions are currently 10.x, 11.x (and future major versions above 12).
+  // Classic flavors use 1.x-5.x (Era/TBC/Wrath/Cata/MoP) and 12.x (MoP Classic interface).
+  const hasRetailVersion = file.gameVersions.some(v => {
+    // Skip non-version strings (e.g. "Retail", "Classic", flavor labels)
+    if (!/^\d/.test(v)) return true
+    return !CLASSIC_ONLY_MAJOR_VERSIONS.some(prefix => v.startsWith(prefix))
+  })
+  return hasRetailVersion
 }
 
 // CurseForge release type: 1=release, 2=beta, 3=alpha
@@ -242,6 +264,7 @@ export class CurseForgeProvider extends BaseProvider {
 
       const latestFile = res.data.data
         .filter(f => allowedTypes.includes(f.releaseType))
+        .filter(f => isFileCompatibleWithFlavor(f, flavor))
         .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0]
 
       if (!latestFile) return null
@@ -279,6 +302,7 @@ export class CurseForgeProvider extends BaseProvider {
 
       const files = (res.data.data ?? [])
         .filter(f => allowedTypes.includes(f.releaseType))
+        .filter(f => isFileCompatibleWithFlavor(f, flavor))
         .sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())
 
       const versions: AddonVersionInfo[] = []
