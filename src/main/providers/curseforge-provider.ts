@@ -33,8 +33,9 @@ const GAME_VERSION_TYPE_MAP: Partial<Record<WowFlavor, number>> = {
 // Major interface version prefixes that belong to non-Retail Classic flavors.
 // Used as a client-side safety filter when the API's gameVersionTypeId filtering
 // lets through files for the wrong flavor (e.g. Pandaria Classic leaking into Retail).
-// CurseForge gameVersions use strings like "12.0.1" (MoP Classic) vs "11.0.7" (Retail).
-const CLASSIC_ONLY_MAJOR_VERSIONS = ['1.', '2.', '3.', '4.', '5.', '12.']
+// Classic flavors: 1.x (Era), 2.x (TBC), 3.x (Wrath), 4.x (Cata), 5.x (MoP Classic).
+// Retail: 10.x (Dragonflight), 11.x (The War Within), 12.x (Midnight), and future majors.
+const CLASSIC_ONLY_MAJOR_VERSIONS = ['1.', '2.', '3.', '4.', '5.']
 
 /** Returns true if the file looks compatible with the requested flavor */
 function isFileCompatibleWithFlavor(file: CFFile, flavor?: WowFlavor): boolean {
@@ -42,8 +43,8 @@ function isFileCompatibleWithFlavor(file: CFFile, flavor?: WowFlavor): boolean {
   if (!file.gameVersions || file.gameVersions.length === 0) return true
 
   // Check if ANY numeric game version is Retail-compatible.
-  // Retail versions are currently 10.x, 11.x (and future major versions above 12).
-  // Classic flavors use 1.x-5.x (Era/TBC/Wrath/Cata/MoP) and 12.x (MoP Classic interface).
+  // Retail versions: 10.x (Dragonflight), 11.x (The War Within), 12.x (Midnight), etc.
+  // Classic flavors: 1.x (Era), 2.x (TBC), 3.x (Wrath), 4.x (Cata), 5.x (MoP Classic).
   // Non-numeric labels (e.g. "Retail", "Classic") are ignored — only numeric versions decide.
   const numericVersions = file.gameVersions.filter(v => /^\d/.test(v))
   if (numericVersions.length === 0) return true  // No numeric versions to check, allow through
