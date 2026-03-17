@@ -179,6 +179,7 @@ export interface AppSettings {
   defaultChannel: ReleaseChannel
   autoCheckUpdates: boolean
   autoCheckInterval: number  // minutes
+  autoInstallUpdates: boolean
   minimizeToTray: boolean
   launchAtLogin: boolean
   theme: 'dark' | 'light'
@@ -192,6 +193,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultChannel: 'stable',
   autoCheckUpdates: true,
   autoCheckInterval: 60,
+  autoInstallUpdates: true,
   minimizeToTray: true,
   launchAtLogin: false,
   theme: 'dark',

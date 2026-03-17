@@ -161,6 +161,7 @@ const DEFAULT_SETTINGS = {
   defaultChannel: "stable",
   autoCheckUpdates: true,
   autoCheckInterval: 60,
+  autoInstallUpdates: true,
   minimizeToTray: true,
   launchAtLogin: false,
   theme: "dark"
@@ -603,7 +604,7 @@ class BaseProvider {
     return { externalId };
   }
   /** Get available versions for an addon (for version picker). Override in subclasses. */
-  async getVersions(_sourceId, _channel) {
+  async getVersions(_sourceId, _channel, _flavor) {
     return [];
   }
 }
@@ -676,7 +677,7 @@ class WagoProvider extends BaseProvider {
   async search(_query, _flavor, _page, _pageSize) {
     return [];
   }
-  async checkUpdate(addon, channel) {
+  async checkUpdate(addon, channel, _flavor) {
     if (!addon.sourceId || !this.apiKey) return null;
     try {
       const gameVersion = FLAVOR_MAP[this.activeFlavor] ?? "retail";
@@ -740,6 +741,8 @@ class WagoProvider extends BaseProvider {
 const CF_BASE = "https://api.curseforge.com/v1";
 const WOW_GAME_ID = 1;
 const GAME_VERSION_TYPE_MAP = {
+  retail: 517,
+  // CF2WowGameVersionType.Retail
   classic_era: 67408,
   // CF2WowGameVersionType.Classic
   burning_crusade: 73246,
@@ -751,6 +754,14 @@ const GAME_VERSION_TYPE_MAP = {
   cataclysm: 77522
   // CF2WowGameVersionType.Cata
 };
+const CLASSIC_ONLY_MAJOR_VERSIONS = ["1.", "2.", "3.", "4.", "5."];
+function isFileCompatibleWithFlavor(file, flavor) {
+  if (!flavor || flavor !== "retail") return true;
+  if (!file.gameVersions || file.gameVersions.length === 0) return true;
+  const numericVersions = file.gameVersions.filter((v) => /^\d/.test(v));
+  if (numericVersions.length === 0) return true;
+  return numericVersions.some((v) => !CLASSIC_ONLY_MAJOR_VERSIONS.some((prefix) => v.startsWith(prefix)));
+}
 const CHANNEL_TYPE = {
   stable: [1],
   beta: [1, 2],
@@ -834,9 +845,9 @@ class CurseForgeProvider extends BaseProvider {
       return this.categoryCache ?? [];
     }
   }
-  mapMod(mod, channel = "stable") {
+  mapMod(mod, channel = "stable", flavor) {
     const allowedTypes = CHANNEL_TYPE[channel];
-    const latestFile = (mod.latestFiles ?? []).filter((f) => allowedTypes.includes(f.releaseType)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0];
+    const latestFile = (mod.latestFiles ?? []).filter((f) => allowedTypes.includes(f.releaseType)).filter((f) => isFileCompatibleWithFlavor(f, flavor)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0];
     return {
       externalId: String(mod.id),
       provider: "curseforge",
@@ -870,17 +881,18 @@ class CurseForgeProvider extends BaseProvider {
       sortOrder
     };
     const res = await this.client.get("/mods/search", { params });
-    return (res.data.data ?? []).map((m) => this.mapMod(m));
+    return (res.data.data ?? []).map((m) => this.mapMod(m, "stable", flavor)).filter((m) => m.latestVersion !== "0");
   }
-  async checkUpdate(addon, channel) {
+  async checkUpdate(addon, channel, flavor) {
     if (!this.apiKey || !addon.sourceId) return null;
     try {
       const allowedTypes = CHANNEL_TYPE[channel];
+      const gameVersionTypeId = flavor ? GAME_VERSION_TYPE_MAP[flavor] : void 0;
       const res = await this.client.get(
         `/mods/${addon.sourceId}/files`,
-        { params: { pageSize: 10 } }
+        { params: { pageSize: 10, ...gameVersionTypeId ? { gameVersionTypeId } : {} } }
       );
-      const latestFile = res.data.data.filter((f) => allowedTypes.includes(f.releaseType)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0];
+      const latestFile = res.data.data.filter((f) => allowedTypes.includes(f.releaseType)).filter((f) => isFileCompatibleWithFlavor(f, flavor)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime())[0];
       if (!latestFile) return null;
       const downloadUrl = await this.resolveDownloadUrl(addon.sourceId, latestFile);
       if (!downloadUrl) return null;
@@ -898,15 +910,16 @@ class CurseForgeProvider extends BaseProvider {
     if (type === 2) return "beta";
     return "stable";
   }
-  async getVersions(sourceId, channel) {
+  async getVersions(sourceId, channel, flavor) {
     if (!this.apiKey || !sourceId) return [];
     try {
       const allowedTypes = CHANNEL_TYPE[channel];
+      const gameVersionTypeId = flavor ? GAME_VERSION_TYPE_MAP[flavor] : void 0;
       const res = await this.client.get(
         `/mods/${sourceId}/files`,
-        { params: { pageSize: 50 } }
+        { params: { pageSize: 50, ...gameVersionTypeId ? { gameVersionTypeId } : {} } }
       );
-      const files = (res.data.data ?? []).filter((f) => allowedTypes.includes(f.releaseType)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime());
+      const files = (res.data.data ?? []).filter((f) => allowedTypes.includes(f.releaseType)).filter((f) => isFileCompatibleWithFlavor(f, flavor)).sort((a, b) => new Date(b.fileDate).getTime() - new Date(a.fileDate).getTime());
       const versions = [];
       for (const f of files) {
         const downloadUrl = await this.resolveDownloadUrl(sourceId, f);
@@ -994,7 +1007,7 @@ class WoWInterfaceProvider extends BaseProvider {
     const start = (page - 1) * pageSize;
     return matches.slice(start, start + pageSize).map((f) => this.mapFile(f));
   }
-  async checkUpdate(addon, _channel) {
+  async checkUpdate(addon, _channel, _flavor) {
     if (!addon.sourceId) return null;
     try {
       const res = await this.client.get(`/filedetails/${addon.sourceId}.json`);
@@ -1069,7 +1082,7 @@ class GitHubProvider extends BaseProvider {
     return [];
   }
   /** Resolve a GitHub "owner/repo" sourceId to the latest release */
-  async checkUpdate(addon, channel) {
+  async checkUpdate(addon, channel, _flavor) {
     if (!addon.sourceId || !addon.sourceId.includes("/")) return null;
     try {
       const res = await this.client.get(
@@ -1244,16 +1257,16 @@ function registerIpcHandlers(win) {
       wago$1.setActiveFlavor(installation.flavor);
       switch (addon.provider) {
         case "wago":
-          info = await wago$1.checkUpdate(addon, channel);
+          info = await wago$1.checkUpdate(addon, channel, installation.flavor);
           break;
         case "curseforge":
-          info = await curseforge$1.checkUpdate(addon, channel);
+          info = await curseforge$1.checkUpdate(addon, channel, installation.flavor);
           break;
         case "wowinterface":
-          info = await wowinterface$1.checkUpdate(addon, channel);
+          info = await wowinterface$1.checkUpdate(addon, channel, installation.flavor);
           break;
         case "github":
-          info = await github$1.checkUpdate(addon, channel);
+          info = await github$1.checkUpdate(addon, channel, installation.flavor);
           break;
       }
       if (!info?.downloadUrl) {
@@ -1292,16 +1305,16 @@ function registerIpcHandlers(win) {
         let info = null;
         switch (addon.provider) {
           case "wago":
-            info = await wago$1.checkUpdate(addon, channel);
+            info = await wago$1.checkUpdate(addon, channel, installation.flavor);
             break;
           case "curseforge":
-            info = await curseforge$1.checkUpdate(addon, channel);
+            info = await curseforge$1.checkUpdate(addon, channel, installation.flavor);
             break;
           case "wowinterface":
-            info = await wowinterface$1.checkUpdate(addon, channel);
+            info = await wowinterface$1.checkUpdate(addon, channel, installation.flavor);
             break;
           case "github":
-            info = await github$1.checkUpdate(addon, channel);
+            info = await github$1.checkUpdate(addon, channel, installation.flavor);
             break;
         }
         if (info) {
@@ -1375,15 +1388,16 @@ function registerIpcHandlers(win) {
     const installation = settings.wowInstallations.find((i) => i.id === installationId);
     if (installation) wago$1.setActiveFlavor(installation.flavor);
     const channel = addon.channelPreference ?? settings.defaultChannel;
+    const flavor = installation?.flavor;
     switch (addon.provider) {
       case "curseforge":
-        return curseforge$1.getVersions(addon.sourceId, channel);
+        return curseforge$1.getVersions(addon.sourceId, channel, flavor);
       case "github":
-        return github$1.getVersions(addon.sourceId, channel);
+        return github$1.getVersions(addon.sourceId, channel, flavor);
       case "wowinterface":
-        return wowinterface$1.getVersions(addon.sourceId, channel);
+        return wowinterface$1.getVersions(addon.sourceId, channel, flavor);
       case "wago":
-        return wago$1.getVersions(addon.sourceId, channel);
+        return wago$1.getVersions(addon.sourceId, channel, flavor);
       default:
         return [];
     }
@@ -1545,16 +1559,16 @@ async function runBackgroundUpdateCheck(win) {
         let info = null;
         switch (addon.provider) {
           case "wago":
-            info = await wago.checkUpdate(addon, channel);
+            info = await wago.checkUpdate(addon, channel, installation.flavor);
             break;
           case "curseforge":
-            info = await curseforge.checkUpdate(addon, channel);
+            info = await curseforge.checkUpdate(addon, channel, installation.flavor);
             break;
           case "wowinterface":
-            info = await wowinterface.checkUpdate(addon, channel);
+            info = await wowinterface.checkUpdate(addon, channel, installation.flavor);
             break;
           case "github":
-            info = await github.checkUpdate(addon, channel);
+            info = await github.checkUpdate(addon, channel, installation.flavor);
             break;
         }
         if (info) {
@@ -1562,7 +1576,8 @@ async function runBackgroundUpdateCheck(win) {
           addon.latestVersion = info.latestVersion;
           addon.downloadUrl = info.downloadUrl;
           addon.updateAvailable = hasUpdate;
-          if (hasUpdate && addon.autoUpdate && !addon.pinnedVersion && info.downloadUrl) {
+          const shouldAutoInstall = (settings.autoInstallUpdates || addon.autoUpdate) && !addon.pinnedVersion;
+          if (hasUpdate && shouldAutoInstall && info.downloadUrl) {
             const result = {
               externalId: addon.sourceId ?? addon.id,
               provider: addon.provider,

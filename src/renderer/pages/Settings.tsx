@@ -149,20 +149,33 @@ export default function Settings() {
             />
 
             {settings.autoCheckUpdates && (
-              <label className="flex items-center gap-3 text-sm text-gray-300">
-                <span>Check interval</span>
-                <select
-                  className="input text-sm"
-                  value={settings.autoCheckInterval}
-                  onChange={e => patchSettings({ autoCheckInterval: Number(e.target.value) })}
-                >
-                  <option value={15}>Every 15 minutes</option>
-                  <option value={30}>Every 30 minutes</option>
-                  <option value={60}>Every hour</option>
-                  <option value={180}>Every 3 hours</option>
-                  <option value={360}>Every 6 hours</option>
-                </select>
-              </label>
+              <>
+                <label className="flex items-center gap-3 text-sm text-gray-300">
+                  <span>Check interval</span>
+                  <select
+                    className="input text-sm"
+                    value={settings.autoCheckInterval}
+                    onChange={e => patchSettings({ autoCheckInterval: Number(e.target.value) })}
+                  >
+                    <option value={15}>Every 15 minutes</option>
+                    <option value={30}>Every 30 minutes</option>
+                    <option value={60}>Every hour</option>
+                    <option value={180}>Every 3 hours</option>
+                    <option value={360}>Every 6 hours</option>
+                  </select>
+                </label>
+
+                <CheckboxRow
+                  label="Automatically install updates"
+                  checked={settings.autoInstallUpdates ?? true}
+                  onChange={v => patchSettings({ autoInstallUpdates: v })}
+                />
+                {settings.autoInstallUpdates !== false && (
+                  <p className="text-gray-600 text-xs ml-12">
+                    Updates will be downloaded and installed automatically. Per-addon auto-update can still be toggled individually.
+                  </p>
+                )}
+              </>
             )}
 
             <label className="flex items-center gap-3 text-sm text-gray-300">
