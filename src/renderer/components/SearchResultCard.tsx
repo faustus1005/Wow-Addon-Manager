@@ -22,7 +22,7 @@ function fmtNumber(n: number): string {
 }
 
 export default function SearchResultCard({ result, installedAddons }: Props) {
-  const { activeInstallationId, settings } = useApp()
+  const { activeInstallationId, settings, installAddon } = useApp()
   const [installing, setInstalling] = useState(false)
 
   const installed = installedAddons.find(
@@ -37,7 +37,7 @@ export default function SearchResultCard({ result, installedAddons }: Props) {
     setInstalling(true)
     const t = toast.loading(`Installing ${result.name}…`)
     try {
-      await window.api.installAddon({
+      await installAddon({
         result,
         installationId: activeInstallationId,
         channel: settings?.defaultChannel ?? 'stable',

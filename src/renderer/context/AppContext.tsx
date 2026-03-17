@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react'
-import { AppSettings, AddonSearchResult, InstalledAddon, WowInstallation } from '../types'
+import { AppSettings, AddonSearchResult, InstalledAddon, WowInstallation, InstallPayload } from '../types'
 import toast from 'react-hot-toast'
 
 // ─── State ──────────────────────────────────────────────────────────────────
@@ -79,6 +79,7 @@ interface AppContextValue extends AppState {
   switchInstallation: (id: string) => Promise<void>
   scanAddons: () => Promise<void>
   checkUpdates: () => Promise<void>
+  installAddon: (payload: InstallPayload) => Promise<InstalledAddon>
   updateAddon: (addonId: string) => Promise<void>
   updateAllAddons: () => Promise<void>
   uninstallAddon: (addonId: string) => Promise<void>
@@ -154,6 +155,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_CHECKING_UPDATES', value: false })
     }
   }, [api, state.activeInstallationId])
+
+  // ── Install addon (from Browse) ──────────────────────────────────────────
+
+  const installAddon = useCallback(async (payload: InstallPayload): Promise<InstalledAddon> => {
+    const installed = await api.installAddon(payload)
+    dispatch({ type: 'UPSERT_ADDON', addon: installed })
+    return installed
+  }, [api])
 
   // ── Update single addon ────────────────────────────────────────────────
 
@@ -288,6 +297,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       switchInstallation,
       scanAddons,
       checkUpdates,
+      installAddon,
       updateAddon,
       updateAllAddons,
       uninstallAddon,
