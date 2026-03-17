@@ -8972,6 +8972,11 @@ function AppProvider({ children }) {
       dispatch({ type: "SET_CHECKING_UPDATES", value: false });
     }
   }, [api, state.activeInstallationId]);
+  const installAddon = reactExports.useCallback(async (payload) => {
+    const installed = await api.installAddon(payload);
+    dispatch({ type: "UPSERT_ADDON", addon: installed });
+    return installed;
+  }, [api]);
   const updateAddon = reactExports.useCallback(async (addonId) => {
     const id2 = state.activeInstallationId;
     if (!id2) return;
@@ -9076,6 +9081,7 @@ function AppProvider({ children }) {
     switchInstallation,
     scanAddons,
     checkUpdates,
+    installAddon,
     updateAddon,
     updateAllAddons,
     uninstallAddon,
@@ -9907,7 +9913,7 @@ function fmtNumber(n2) {
   return String(n2);
 }
 function SearchResultCard({ result, installedAddons }) {
-  const { activeInstallationId, settings } = useApp();
+  const { activeInstallationId, settings, installAddon } = useApp();
   const [installing, setInstalling] = reactExports.useState(false);
   const installed = installedAddons.find(
     (a2) => a2.provider === result.provider && a2.sourceId === result.externalId
@@ -9920,7 +9926,7 @@ function SearchResultCard({ result, installedAddons }) {
     setInstalling(true);
     const t2 = zt.loading(`Installing ${result.name}…`);
     try {
-      await window.api.installAddon({
+      await installAddon({
         result,
         installationId: activeInstallationId,
         channel: settings?.defaultChannel ?? "stable"
@@ -10452,23 +10458,34 @@ function Settings() {
             onChange: (v2) => patchSettings({ autoCheckUpdates: v2 })
           }
         ),
-        settings.autoCheckUpdates && /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-3 text-sm text-gray-300", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Check interval" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "select",
+        settings.autoCheckUpdates && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-3 text-sm text-gray-300", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Check interval" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "select",
+              {
+                className: "input text-sm",
+                value: settings.autoCheckInterval,
+                onChange: (e2) => patchSettings({ autoCheckInterval: Number(e2.target.value) }),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 15, children: "Every 15 minutes" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 30, children: "Every 30 minutes" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 60, children: "Every hour" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 180, children: "Every 3 hours" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 360, children: "Every 6 hours" })
+                ]
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            CheckboxRow,
             {
-              className: "input text-sm",
-              value: settings.autoCheckInterval,
-              onChange: (e2) => patchSettings({ autoCheckInterval: Number(e2.target.value) }),
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 15, children: "Every 15 minutes" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 30, children: "Every 30 minutes" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 60, children: "Every hour" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 180, children: "Every 3 hours" }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: 360, children: "Every 6 hours" })
-              ]
+              label: "Automatically install updates",
+              checked: settings.autoInstallUpdates ?? true,
+              onChange: (v2) => patchSettings({ autoInstallUpdates: v2 })
             }
-          )
+          ),
+          settings.autoInstallUpdates !== false && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-gray-600 text-xs ml-12", children: "Updates will be downloaded and installed automatically. Per-addon auto-update can still be toggled individually." })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-3 text-sm text-gray-300", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Default release channel" }),
